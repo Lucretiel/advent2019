@@ -7,7 +7,7 @@ use std::fmt::Debug;
 pub use crate::match_opcode;
 pub use crate::proc;
 pub use machine::Machine;
-pub use operation::{advance_ip, Operation, ResetIp};
+pub use operation::{Operation, ResetIp};
 pub use value::{binary_func, Addressed, IPValue, Value, IP};
 
 /// Binary opcode: add ip+1 to ip+2, save in ip+3, then advance to ip+4
