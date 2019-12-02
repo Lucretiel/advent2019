@@ -3,7 +3,7 @@ use super::{Machine, Operation};
 use std::fmt::{self, Debug, Formatter};
 
 /// A value which can be received or computed from a machine.
-pub trait Value: Sized {
+pub trait Value: Sized + Debug + Clone {
     /// Get the value from the machine
     fn get(&self, machine: &Machine) -> usize;
 
@@ -57,7 +57,7 @@ impl Value for IPValue {
 
 /// A value associated with an addressed location in the machine. Can be used
 /// as an Value, and can also be used as a destination for writes.
-pub trait Addressed: Sized {
+pub trait Addressed: Sized + Debug + Clone {
     /// Get the address of this value
     fn address(&self, machine: &Machine) -> usize;
 
@@ -127,13 +127,22 @@ impl<T: Value> Addressed for Deref<T> {
 }
 
 /// Apply a function to the
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Unary<T: Value, F: Fn(usize) -> usize> {
     inner: T,
     func: F,
 }
 
-impl<T: Value, F: Fn(usize) -> usize> Value for Unary<T, F> {
+impl<T: Value + Debug, F: Fn(usize) -> usize> Debug for Unary<T, F> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("intcode::value::Binary")
+            .field("inner", &self.inner)
+            .field("func", &"<closure>")
+            .finish()
+    }
+}
+
+impl<T: Value, F: Fn(usize) -> usize + Clone> Value for Unary<T, F> {
     #[inline(always)]
     fn get(&self, machine: &Machine) -> usize {
         (self.func)(self.inner.get(machine))
@@ -167,7 +176,7 @@ pub fn binary_func<L: Value, R: Value, F: Fn(usize, usize) -> usize>(
     Binary { lhs, rhs, func }
 }
 
-impl<L: Value, R: Value, F: Fn(usize, usize) -> usize> Value for Binary<L, R, F> {
+impl<L: Value, R: Value, F: Clone + Fn(usize, usize) -> usize> Value for Binary<L, R, F> {
     #[inline(always)]
     fn get(&self, machine: &Machine) -> usize {
         (self.func)(self.lhs.get(machine), self.rhs.get(machine))
