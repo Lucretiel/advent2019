@@ -1,12 +1,7 @@
 #![allow(unused_imports)]
 
-
 // SOLUTION CODE GOES HERE
 use intcode::*;
-
-fn set_noun_verb(noun: usize, verb: usize) -> impl Operation + Clone {
-    1.deref().set_to(noun).then(2.deref().set_to(verb))
-}
 
 #[inline(always)]
 fn solve(input: &str) -> impl Display {
@@ -22,11 +17,13 @@ fn solve(input: &str) -> impl Display {
         for verb in 0..100 {
             machine.clone_from(&init);
 
-            let result = machine.execute(
-                set_noun_verb(noun, verb)
-                .then(intcode::run())
-                .then(0.deref())
-            );
+            let result = machine.execute(proc!{
+                ResetIp;
+                1.deref().set_to(noun);
+                2.deref().set_to(verb);
+                intcode::run();
+                0.deref()
+            });
 
             if result == 19690720 {
                 return (100 * noun) + verb;

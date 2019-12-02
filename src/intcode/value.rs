@@ -1,6 +1,6 @@
-use std::fmt::{Debug, Formatter, self};
+use super::operation::{advance_ip, AdvanceIp, Set};
 use super::{Machine, Operation};
-use super::operation::{Set, AdvanceIp, advance_ip};
+use std::fmt::{self, Debug, Formatter};
 
 /// A value which can be received or computed from a machine.
 pub trait Value: Sized {
@@ -17,19 +17,13 @@ pub trait Value: Sized {
     /// Apply a unary function to this value when getting it.
     #[inline(always)]
     fn map<F: Fn(usize) -> usize>(self, func: F) -> Unary<Self, F> {
-        Unary {
-            inner: self,
-            func
-        }
+        Unary { inner: self, func }
     }
 
     /// Create an operation that sets this value to the given address
     #[inline(always)]
     fn set_at<T: Addressed>(self, dest: T) -> Set<Self, T> {
-        Set {
-            source: self,
-            dest,
-        }
+        Set { source: self, dest }
     }
 }
 
@@ -71,7 +65,7 @@ pub trait Addressed: Sized {
     /// the value returned by `value`
     #[inline(always)]
     fn set_to<T: Value>(self, value: T) -> Set<T, Self> {
-        Set{
+        Set {
             source: value,
             dest: self,
         }
@@ -86,6 +80,7 @@ pub trait Addressed: Sized {
         }
     }
 
+    /// Create an operation that sets the instruction pointer to this address
     #[inline(always)]
     fn set_ip(self) -> AdvanceIp<Self> {
         advance_ip(self)
@@ -95,21 +90,23 @@ pub trait Addressed: Sized {
 impl<T: Addressed> Value for T {
     #[inline(always)]
     fn get(&self, machine: &Machine) -> usize {
-        machine.memory[self.address(machine)]
+        let address = self.address(machine);
+        debug_assert!(address < machine.memory.len());
+        machine.memory[address]
     }
 }
 
 /// The value *at* the current instruction pointer
-pub const IP: Deref<IPValue> = Deref{inner: IPValue};
+pub const IP: Deref<IPValue> = Deref { inner: IPValue };
 
 /// A value at a positive offset from another value
 #[derive(Debug, Clone)]
 pub struct Relative<T: Addressed> {
     inner: T,
-    offset: usize
+    offset: usize,
 }
 
-impl <T: Addressed> Addressed for Relative<T> {
+impl<T: Addressed> Addressed for Relative<T> {
     #[inline(always)]
     fn address(&self, machine: &Machine) -> usize {
         self.inner.address(machine) + self.offset
@@ -119,10 +116,10 @@ impl <T: Addressed> Addressed for Relative<T> {
 /// The value at the address of the inner value
 #[derive(Debug, Clone)]
 pub struct Deref<T: Value> {
-    inner: T
+    inner: T,
 }
 
-impl <T: Value> Addressed for Deref<T> {
+impl<T: Value> Addressed for Deref<T> {
     #[inline(always)]
     fn address(&self, machine: &Machine) -> usize {
         self.inner.get(machine)
@@ -138,7 +135,7 @@ pub struct Unary<T: Value, F: Fn(usize) -> usize> {
 
 impl<T: Value, F: Fn(usize) -> usize> Value for Unary<T, F> {
     #[inline(always)]
-    fn get(&self, machine: &Machine) -> usize{
+    fn get(&self, machine: &Machine) -> usize {
         (self.func)(self.inner.get(machine))
     }
 }
@@ -162,13 +159,17 @@ impl<L: Value + Debug, R: Value + Debug, F: Fn(usize, usize) -> usize> Debug for
 
 /// Create an `Value` which is the value of applying the function `func`
 /// to the values `lhs` and `rhs`
-pub fn binary_func<L: Value, R: Value, F: Fn(usize, usize) -> usize>(lhs: L, rhs: R, func: F) -> Binary<L, R, F> {
+pub fn binary_func<L: Value, R: Value, F: Fn(usize, usize) -> usize>(
+    lhs: L,
+    rhs: R,
+    func: F,
+) -> Binary<L, R, F> {
     Binary { lhs, rhs, func }
 }
 
 impl<L: Value, R: Value, F: Fn(usize, usize) -> usize> Value for Binary<L, R, F> {
     #[inline(always)]
-    fn get(&self, machine: &Machine) -> usize{
+    fn get(&self, machine: &Machine) -> usize {
         (self.func)(self.lhs.get(machine), self.rhs.get(machine))
     }
 }

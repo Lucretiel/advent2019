@@ -31,7 +31,7 @@ impl Machine {
 }
 
 impl FromIterator<usize> for Machine {
-    fn from_iter<I: IntoIterator<Item=usize>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = usize>>(iter: I) -> Self {
         Self::new(iter.into_iter().collect())
     }
 }

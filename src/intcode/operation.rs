@@ -1,5 +1,5 @@
-use std::fmt::{Debug, self, Formatter};
-use super::{Machine, Value, Addressed, IP};
+use super::{Addressed, Machine, Value, IP};
+use std::fmt::{self, Debug, Formatter};
 
 /// An operation applies some new state to a machine
 pub trait Operation: Sized {
@@ -12,7 +12,7 @@ pub trait Operation: Sized {
     /// of the second operation.
     #[inline(always)]
     fn then<T: Operation>(self, second: T) -> Chain<Self, T> {
-        Chain{
+        Chain {
             first: self,
             second,
         }
@@ -22,7 +22,14 @@ pub trait Operation: Sized {
     /// Returns nothing.
     #[inline(always)]
     fn until_halt(self) -> UntilHalt<Self> {
-        UntilHalt{body: self}
+        UntilHalt { body: self }
+    }
+}
+
+#[macro_export]
+macro_rules! proc {
+    ($first:expr $(; $tail:expr)*) => {
+        $first $(.then($tail))*
     }
 }
 
@@ -45,7 +52,7 @@ impl<T: Operation, U: Operation> Operation for Chain<T, U> {
 /// Run the inner operation until the current IP value is 99
 #[derive(Debug, Clone)]
 pub struct UntilHalt<T: Operation> {
-    body: T
+    body: T,
 }
 
 impl<T: Operation> Operation for UntilHalt<T> {
@@ -62,7 +69,7 @@ impl<T: Operation> Operation for UntilHalt<T> {
 /// Run a function as an operation
 #[derive(Clone)]
 pub struct Func<T, F: Fn(&mut Machine) -> T> {
-    func: F
+    func: F,
 }
 
 impl<T, F: Fn(&mut Machine) -> T> Debug for Func<T, F> {
@@ -83,7 +90,7 @@ impl<T, F: Fn(&mut Machine) -> T> Operation for Func<T, F> {
 }
 
 pub fn func<T, F: Fn(&mut Machine) -> T>(func: F) -> Func<T, F> {
-    Func{func}
+    Func { func }
 }
 
 // Create an operation which runs an operation given an opcode. Panics on
@@ -117,6 +124,7 @@ impl<S: Value, D: Addressed> Operation for Set<S, D> {
     fn execute(&self, machine: &mut Machine) {
         let value = self.source.get(machine);
         let address = self.dest.address(machine);
+        debug_assert!(address < machine.memory.len());
         machine.memory[address] = value;
     }
 }
@@ -124,7 +132,7 @@ impl<S: Value, D: Addressed> Operation for Set<S, D> {
 /// Set the IP to the value indicated
 #[derive(Debug, Clone)]
 pub struct AdvanceIp<T: Addressed> {
-    target: T
+    target: T,
 }
 
 impl<T: Addressed> Operation for AdvanceIp<T> {
@@ -132,10 +140,24 @@ impl<T: Addressed> Operation for AdvanceIp<T> {
 
     #[inline(always)]
     fn execute(&self, machine: &mut Machine) {
-        machine.instruction_pointer = self.target.address(machine);
+        let address = self.target.address(machine);
+        debug_assert!(address < machine.memory.len());
+        machine.instruction_pointer = address;
     }
 }
 
 pub fn advance_ip<T: Addressed>(target: T) -> AdvanceIp<T> {
-    AdvanceIp{target}
+    AdvanceIp { target }
+}
+
+#[derive(Debug, Clone)]
+pub struct ResetIp;
+
+impl Operation for ResetIp {
+    type Result = ();
+
+    #[inline(always)]
+    fn execute(&self, machine: &mut Machine) {
+        machine.instruction_pointer = 0;
+    }
 }
