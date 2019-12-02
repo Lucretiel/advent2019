@@ -31,6 +31,7 @@ pub trait Value: Sized + Debug + Clone {
 impl<T: Value> Operation for T {
     type Result = usize;
 
+    #[inline(always)]
     fn execute(&self, machine: &mut Machine) -> usize {
         self.get(machine)
     }
@@ -73,7 +74,7 @@ pub trait Addressed: Sized + Debug + Clone {
 
     /// Get the value at the offset location from this one
     #[inline(always)]
-    fn offset(self, offset: usize) -> Relative<Self> {
+    fn offset<T: Value>(self, offset: T) -> Relative<Self, T> {
         Relative {
             inner: self,
             offset,
@@ -90,9 +91,7 @@ pub trait Addressed: Sized + Debug + Clone {
 impl<T: Addressed> Value for T {
     #[inline(always)]
     fn get(&self, machine: &Machine) -> usize {
-        let address = self.address(machine);
-        debug_assert!(address < machine.memory.len());
-        machine.memory[address]
+        machine.memory[self.address(machine)]
     }
 }
 
@@ -101,15 +100,15 @@ pub const IP: Deref<IPValue> = Deref { inner: IPValue };
 
 /// A value at a positive offset from another value
 #[derive(Debug, Clone)]
-pub struct Relative<T: Addressed> {
+pub struct Relative<T: Addressed, O: Value> {
     inner: T,
-    offset: usize,
+    offset: O,
 }
 
-impl<T: Addressed> Addressed for Relative<T> {
+impl<T: Addressed, O: Value> Addressed for Relative<T, O> {
     #[inline(always)]
     fn address(&self, machine: &Machine) -> usize {
-        self.inner.address(machine) + self.offset
+        self.inner.address(machine) + self.offset.get(machine)
     }
 }
 

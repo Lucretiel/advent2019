@@ -117,7 +117,6 @@ impl<S: Value, D: Addressed> Operation for Set<S, D> {
     fn execute(&self, machine: &mut Machine) {
         let value = self.source.get(machine);
         let address = self.dest.address(machine);
-        debug_assert!(address < machine.memory.len());
         machine.memory[address] = value;
     }
 }
@@ -134,7 +133,6 @@ impl<T: Addressed> Operation for AdvanceIp<T> {
     #[inline(always)]
     fn execute(&self, machine: &mut Machine) {
         let address = self.target.address(machine);
-        debug_assert!(address < machine.memory.len());
         machine.instruction_pointer = address;
     }
 }
