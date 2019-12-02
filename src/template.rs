@@ -61,6 +61,8 @@ fn main() {
     eprintln!("Algorithm duration: {:?}", duration);
 }
 
+/// This trait provides methods for extrating fields from a parsed regex. They
+/// assume that a match's groups are present, and panic if not.
 trait RegexExtractor<'t> {
     fn field(&self, index: usize) -> &'t str;
 

@@ -15,11 +15,11 @@ use std::rc::{Rc, Weak};
 use std::str::FromStr;
 use std::time::{Duration, Instant};
 
+use gridly::prelude::*;
+use gridly_grids::*;
 use joinery::prelude::*;
 use lazy_static::lazy_static;
 use regex::{self, Regex};
-use gridly::prelude::*;
-use gridly_grids::*;
 
 // DON'T TOUCH THIS
 #[inline(always)]
@@ -30,12 +30,11 @@ fn timed<T>(f: impl FnOnce() -> T) -> (T, Duration) {
     (result, end - start)
 }
 
-
 fn main() {
     let mut input = String::with_capacity(4096);
-    io::stdin().read_to_string(&mut input).unwrap_or_else(|err| {
-        panic!("Error reading input from stdin: {}", err)
-    });
+    io::stdin()
+        .read_to_string(&mut input)
+        .unwrap_or_else(|err| panic!("Error reading input from stdin: {}", err));
     let (solution, duration) = timed(move || solve(&input));
     println!("{}", solution);
     eprintln!("Algorithm duration: {:?}", duration);
@@ -51,8 +50,7 @@ trait RegexExtractor<'t> {
 
 impl<'t> RegexExtractor<'t> for regex::Captures<'t> {
     #[inline]
-    fn field(&self, index: usize) -> &'t str
-    {
+    fn field(&self, index: usize) -> &'t str {
         self.get(index)
             .unwrap_or_else(move || panic!("Group {} didn't match anything", index))
             .as_str()
