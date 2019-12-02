@@ -1,6 +1,9 @@
 #![allow(unused_imports)]
 
 // SOLUTION CODE GOES HERE
+
+// Remove if this is not an intcode problem
+mod intcode;
 use intcode::*;
 
 #[inline(always)]
@@ -18,7 +21,6 @@ fn solve(input: &str) -> impl Display {
             machine.clone_from(&init);
 
             let result = machine.execute(proc! {
-                ResetIp;
                 address(1).set_to(noun);
                 address(2).set_to(verb);
                 intcode::run();
@@ -41,7 +43,6 @@ fn solve(input: &str) -> impl Display {
  * - Utility traits
  * - Anything else that might be broadly useful for other problems
  */
-mod intcode;
 
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;

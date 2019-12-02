@@ -14,12 +14,6 @@ pub trait Value: Sized + Debug + Clone {
         Deref { inner: self }
     }
 
-    /// Apply a unary function to this value when getting it.
-    #[inline(always)]
-    fn map<F: Fn(usize) -> usize>(self, func: F) -> Unary<Self, F> {
-        Unary { inner: self, func }
-    }
-
     /// Create an operation that sets this value to the given address
     #[inline(always)]
     fn set_at<T: Addressed>(self, dest: T) -> Set<Self, T> {
@@ -43,6 +37,28 @@ impl Value for usize {
     fn get(&self, _machine: &Machine) -> usize {
         *self
     }
+}
+
+#[macro_export]
+macro_rules! const_value {
+    ($value:expr) => {{
+        #[derive(Clone)]
+        struct Const();
+
+        impl $crate::value::Value for Const {
+            fn get(&self, _machine: &crate::intcode::Machine) -> usize {
+                $value
+            }
+        }
+
+        impl std::fmt::Debug for Const {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.debug_tuple("Const").field(&($value)).finish()
+            }
+        }
+
+        Const()
+    }};
 }
 
 /// The actual value of the current instruction pointer
@@ -128,61 +144,4 @@ impl<T: Value> Addressed for Deref<T> {
 #[inline(always)]
 pub const fn address(value: usize) -> Deref<usize> {
     Deref{inner: value}
-}
-
-/// Apply a function to the
-#[derive(Clone)]
-pub struct Unary<T: Value, F: Fn(usize) -> usize> {
-    inner: T,
-    func: F,
-}
-
-impl<T: Value + Debug, F: Fn(usize) -> usize> Debug for Unary<T, F> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.debug_struct("intcode::value::Binary")
-            .field("inner", &self.inner)
-            .field("func", &"<closure>")
-            .finish()
-    }
-}
-
-impl<T: Value, F: Fn(usize) -> usize + Clone> Value for Unary<T, F> {
-    #[inline(always)]
-    fn get(&self, machine: &Machine) -> usize {
-        (self.func)(self.inner.get(machine))
-    }
-}
-
-#[derive(Clone)]
-pub struct Binary<L: Value, R: Value, F: Fn(usize, usize) -> usize> {
-    lhs: L,
-    rhs: R,
-    func: F,
-}
-
-impl<L: Value + Debug, R: Value + Debug, F: Fn(usize, usize) -> usize> Debug for Binary<L, R, F> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.debug_struct("intcode::value::Binary")
-            .field("lhs", &self.lhs)
-            .field("rhs", &self.rhs)
-            .field("func", &"<closure>")
-            .finish()
-    }
-}
-
-/// Create an `Value` which is the value of applying the function `func`
-/// to the values `lhs` and `rhs`
-pub fn binary_func<L: Value, R: Value, F: Fn(usize, usize) -> usize>(
-    lhs: L,
-    rhs: R,
-    func: F,
-) -> Binary<L, R, F> {
-    Binary { lhs, rhs, func }
-}
-
-impl<L: Value, R: Value, F: Clone + Fn(usize, usize) -> usize> Value for Binary<L, R, F> {
-    #[inline(always)]
-    fn get(&self, machine: &Machine) -> usize {
-        (self.func)(self.lhs.get(machine), self.rhs.get(machine))
-    }
 }
