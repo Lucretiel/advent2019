@@ -12,3 +12,10 @@ gridly = "0.6.0"
 gridly_grids = "0.3.0"
 jemallocator = "0.3.2"
 lazy_format = "1.7.4"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+lto = true
+panic = "abort"
