@@ -33,5 +33,5 @@ pub fn step() -> impl Operation<Result = ()> {
 // logic, until it halts.
 #[inline(always)]
 pub fn run() -> impl Operation<Result = ()> {
-    ResetIp.then(step().until_halt())
+    step().until_halt()
 }

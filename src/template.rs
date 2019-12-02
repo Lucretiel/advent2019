@@ -2,6 +2,10 @@
 
 // SOLUTION CODE GOES HERE
 
+// Remove if this is not an intcode problem
+mod intcode;
+use intcode::*;
+
 #[inline(always)]
 fn solve(input: &str) -> impl Display {}
 

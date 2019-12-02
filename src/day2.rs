@@ -21,6 +21,7 @@ fn solve(input: &str) -> impl Display {
             machine.clone_from(&init);
 
             let result = machine.execute(proc! {
+                ResetIp;
                 address(1).set_to(noun);
                 address(2).set_to(verb);
                 intcode::run();
