@@ -1,6 +1,20 @@
-#![feature(const_if_match)]
-
 #![allow(unused_imports)]
+
+// SOLUTION CODE GOES HERE
+
+#[inline(always)]
+fn solve(input: &str) -> impl Display {
+
+}
+
+/*
+ * SUPPORTING LIBRARY CODE GOES HERE:
+ *
+ * - Imports & use statements for tons of common traits, data structures, etc
+ * - `fn main` bootstrap that reads from stdin and writes the solution to stdout
+ * - Utility traits
+ * - Anything else that might be broadly useful for other problems
+ */
 
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
@@ -13,19 +27,21 @@ use std::io::{self, Read};
 use std::iter::{self, FromIterator, FusedIterator, Peekable};
 use std::mem::{replace, swap};
 use std::ops::Add;
-use std::process::exit;
 use std::rc::{Rc, Weak};
 use std::str::FromStr;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
-use joinery::prelude::*;
 use lazy_static::lazy_static;
 use regex::{self, Regex};
+
+// String joins
+use joinery::prelude::*;
+
+// Grids
 use gridly::prelude::*;
 use gridly_grids::*;
 
-// DON'T TOUCH THIS
 #[inline(always)]
 fn timed<T>(f: impl FnOnce() -> T) -> (T, Duration) {
     let start = Instant::now();
@@ -73,11 +89,4 @@ impl<'t> RegexExtractor<'t> for regex::Captures<'t> {
             panic!("Failed to parse group {} \"{}\": {}", index, field, err)
         })
     }
-}
-// CODE GOES HERE
-
-
-#[inline(always)]
-fn solve(input: &str) -> impl Display {
-
 }
