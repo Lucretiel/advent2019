@@ -1,4 +1,4 @@
-use super::operation::{advance_ip, AdvanceIp, Set};
+use super::operation::{advance_ip, AdvanceIp, Set, UntilHalt};
 use super::{Machine, Operation};
 use std::fmt::{self, Debug, Formatter};
 
@@ -124,6 +124,11 @@ impl<T: Value> Addressed for Deref<T> {
     fn address(&self, machine: &Machine) -> usize {
         self.inner.get(machine)
     }
+}
+
+#[inline(always)]
+pub const fn address(value: usize) -> Deref<usize> {
+    Deref{inner: value}
 }
 
 /// Apply a function to the

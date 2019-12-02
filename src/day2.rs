@@ -13,27 +13,16 @@ fn solve(input: &str) -> impl Display {
 
     let mut machine = intcode::Machine::default();
 
-    eprintln!(
-        "{:?}",
-        proc! {
-                    ResetIp;
-                    1.deref().set_to(10);
-                    2.deref().set_to(99);
-                    intcode::run();
-                    0.deref()
-        }
-    );
-
     for noun in 0..100 {
         for verb in 0..100 {
             machine.clone_from(&init);
 
             let result = machine.execute(proc! {
                 ResetIp;
-                1.deref().set_to(noun);
-                2.deref().set_to(verb);
+                address(1).set_to(noun);
+                address(2).set_to(verb);
                 intcode::run();
-                0.deref()
+                address(0)
             });
 
             if result == 19690720 {

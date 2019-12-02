@@ -8,7 +8,7 @@ pub use crate::match_opcode;
 pub use crate::proc;
 pub use machine::Machine;
 pub use operation::{Operation, ResetIp};
-pub use value::{binary_func, Addressed, IPValue, Value, IP};
+pub use value::{binary_func, Addressed, IPValue, Value, IP, address};
 
 /// Binary opcode: add ip+1 to ip+2, save in ip+3, then advance to ip+4
 #[inline(always)]
