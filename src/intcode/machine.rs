@@ -31,7 +31,7 @@ impl Machine {
 
     /// Create an operation that clones this machine
     pub fn dup(&self) -> CloneFrom {
-        CloneFrom{ machine: self }
+        CloneFrom { machine: self }
     }
 }
 
@@ -42,7 +42,7 @@ impl FromIterator<usize> for Machine {
 }
 
 #[derive(Debug, Clone)]
-pub struct CloneFrom<'a>{
+pub struct CloneFrom<'a> {
     machine: &'a Machine,
 }
 

@@ -143,5 +143,5 @@ impl<T: Value> Addressed for Deref<T> {
 
 #[inline(always)]
 pub const fn address(value: usize) -> Deref<usize> {
-    Deref{inner: value}
+    Deref { inner: value }
 }

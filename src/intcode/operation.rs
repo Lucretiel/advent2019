@@ -1,6 +1,6 @@
 use super::{Addressed, Machine, Value, IP};
-use std::fmt::{self, Debug, Formatter};
 use crate::const_value;
+use std::fmt::{self, Debug, Formatter};
 
 /// An operation applies some new state to a machine
 pub trait Operation: Sized + Debug + Clone {

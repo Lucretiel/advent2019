@@ -1,21 +1,20 @@
 /**
  * A compositional intcode machine builder
  */
-
 pub mod machine;
 pub mod operation;
 pub mod value;
 
 use std::fmt::Debug;
 
-use crate::match_opcode;
 use crate::define_opcode;
+use crate::match_opcode;
 pub use machine::Machine;
 pub use operation::{Operation, ResetIp};
-pub use value::{Addressed, IPValue, Value, IP, address};
+pub use value::{address, Addressed, IPValue, Value, IP};
 
 // The currently known opcodes
-define_opcode!{
+define_opcode! {
     op_add (lhs.deref()) (rhs.deref()) {lhs + rhs}
     op_mul (lhs.deref()) (rhs.deref()) {lhs * rhs}
 }
