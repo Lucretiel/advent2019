@@ -1,43 +1,34 @@
 #![allow(unused_imports)]
 
+
 // SOLUTION CODE GOES HERE
+use intcode::*;
+
+fn set_noun_verb(noun: usize, verb: usize) -> impl Operation + Clone {
+    1.deref().set_to(noun).then(2.deref().set_to(verb))
+}
 
 #[inline(always)]
 fn solve(input: &str) -> impl Display {
-    let init: Vec<Cell<usize>> = input
+    let init: intcode::Machine = input
         .trim()
         .split(',')
-        .map(|value| value.parse::<usize>().unwrap().into())
+        .map(|value| value.parse().unwrap())
         .collect();
 
-    let mut memory = Vec::new();
+    let mut machine = intcode::Machine::default();
 
     for noun in 0..100 {
         for verb in 0..100 {
-            memory.clone_from(&init);
+            machine.clone_from(&init);
 
-            memory[1].set(noun);
-            memory[2].set(verb);
+            let result = machine.execute(
+                set_noun_verb(noun, verb)
+                .then(intcode::run())
+                .then(0.deref())
+            );
 
-            for op in memory.chunks(4) {
-                match op[0].get() {
-                    99 => break,
-                    code => {
-                        let lhs = memory[op[1].get()].get();
-                        let rhs = memory[op[2].get()].get();
-
-                        let output = match code {
-                            1 => lhs + rhs,
-                            2 => lhs * rhs,
-                            _ => panic!("Invalid opcode: {}", code),
-                        };
-
-                        memory[op[3].get()].set(output);
-                    }
-                }
-            }
-
-            if memory[0].get() == 19690720 {
+            if result == 19690720 {
                 return (100 * noun) + verb;
             }
         }
@@ -53,6 +44,7 @@ fn solve(input: &str) -> impl Display {
  * - Utility traits
  * - Anything else that might be broadly useful for other problems
  */
+mod intcode;
 
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
