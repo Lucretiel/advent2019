@@ -28,10 +28,29 @@ impl Machine {
     pub fn execute<T: Operation>(&mut self, op: T) -> T::Result {
         op.execute(self)
     }
+
+    /// Create an operation that clones this machine
+    pub fn dup(&self) -> CloneFrom {
+        CloneFrom{ machine: self }
+    }
 }
 
 impl FromIterator<usize> for Machine {
     fn from_iter<I: IntoIterator<Item = usize>>(iter: I) -> Self {
         Self::new(iter.into_iter().collect())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CloneFrom<'a>{
+    machine: &'a Machine,
+}
+
+impl<'a> Operation for CloneFrom<'a> {
+    type Result = ();
+
+    #[inline(always)]
+    fn execute(&self, machine: &mut Machine) {
+        machine.clone_from(self.machine)
     }
 }

@@ -18,10 +18,8 @@ fn solve(input: &str) -> impl Display {
 
     for noun in 0..100 {
         for verb in 0..100 {
-            machine.clone_from(&init);
-
             let result = machine.execute(proc! {
-                ResetIp;
+                init.dup();
                 address(1).set_to(noun);
                 address(2).set_to(verb);
                 intcode::run();
