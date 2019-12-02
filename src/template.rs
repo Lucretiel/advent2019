@@ -40,6 +40,9 @@ use joinery::prelude::*;
 use gridly::prelude::*;
 use gridly_grids::*;
 
+// Formatting things without creating intermediary strings
+use lazy_format::lazy_format;
+
 #[inline(always)]
 fn timed<T>(f: impl FnOnce() -> T) -> (T, Duration) {
     let start = Instant::now();
