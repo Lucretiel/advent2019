@@ -7,8 +7,8 @@ pub mod value;
 
 use std::fmt::Debug;
 
-use crate::opcode;
 use crate::match_opcode;
+use crate::opcode;
 
 pub use machine::Machine;
 pub use operation::{Operation, ResetIp};
