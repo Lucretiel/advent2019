@@ -75,7 +75,7 @@ impl<T: Operation> Operation for UntilHalt<T> {
 macro_rules! match_opcode {
     ($($code:pat => $op:expr,)*) => {{
         #[derive(Clone)]
-        struct LocalOpcodeMatcher;
+        struct LocalOpcodeMatcher();
 
         impl $crate::intcode::Operation for LocalOpcodeMatcher {
             type Result = ();
@@ -100,12 +100,12 @@ macro_rules! match_opcode {
             }
         }
 
-        LocalOpcodeMatcher
+        LocalOpcodeMatcher()
     }}
 }
 
 /// An operation that sets the value at a given destination to the given value.
-/// Returns nothing.
+/// Returns nothing. Possibly turing complete.
 #[derive(Debug, Clone)]
 pub struct Set<S: Value, D: Addressed> {
     pub(super) source: S,
