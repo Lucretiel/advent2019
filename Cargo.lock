@@ -4,6 +4,7 @@
 name = "advent"
 version = "0.1.0"
 dependencies = [
+ "generations 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gridly 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gridly_grids 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "jemallocator 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -29,6 +30,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "fs_extra"
 version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "generations"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -116,6 +122,7 @@ dependencies = [
 "checksum aho-corasick 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)" = "58fb5e95d83b38284460a5fda7d6470aa0b8844d283a0b614b8535e880800d2d"
 "checksum cc 1.0.47 (registry+https://github.com/rust-lang/crates.io-index)" = "aa87058dce70a3ff5621797f1506cb837edd02ac4c0ae642b4542dce802908b8"
 "checksum fs_extra 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5f2a4a2034423744d2cc7ca2068453168dcdb82c438419e639a26bd87839c674"
+"checksum generations 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "bb4a17be4b6bd02f4c16ab7620fea1ed17d803a92f34bd102d5335a2f9dd2002"
 "checksum gridly 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "17294dfd600c8b8eecf0b6f75d8830cf34fcf9ed84074eac5ff6f22a428af762"
 "checksum gridly_grids 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0db79e23f3c9f283d0504d06ae1ecdbfc32dcff154ff9145f1fce379c92c7f6c"
 "checksum jemalloc-sys 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "0d3b9f3f5c9b31aa0f5ed3260385ac205db665baa41d49bb8338008ae94ede45"

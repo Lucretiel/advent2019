@@ -44,6 +44,9 @@ use joinery::prelude::*;
 use gridly::prelude::*;
 use gridly_grids::*;
 
+// Generation-based simulations
+use generations::*;
+
 // Formatting things without creating intermediary strings
 use lazy_format::lazy_format;
 
