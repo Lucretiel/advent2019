@@ -169,41 +169,39 @@ macro_rules! opcode_values {
     }
 }
 
-/// Opcode definitions! An opcode takes a series of arguemnts, processes them
-/// in some way, writes them to the value referenced in the last argument,
-/// then pushes the instruction pointer
+/// An opcode takes a series of values (starting with IP+1, IP+2, etc),
+/// processes them in some way, then writes them to IP + N, then sets IP to
+/// IP + N + 1
 #[macro_export]
-macro_rules! define_opcode {
-    ($($name:ident $(($input_name:ident $($extract:tt)*))* {$body:expr})*) => {$(
-        pub fn $name() -> impl Operation<Result=()> {
-            $crate::opcode_values!{$($input_name,)* output, new_ip,}
-            $(let $input_name = $input_name $($extract)*;)*
-            let output = output.deref();
+macro_rules! opcode {
+    ($(($input_name:ident $($extract:tt)*))* {$body:expr}) => {{
+        $crate::opcode_values!{$($input_name,)* output, new_ip,}
+        $(let $input_name = $input_name $($extract)*;)*
+        let output = output.deref();
 
-            #[allow(non_camel_case_types)]
-            #[derive(Clone)]
-            struct Evaluate<$($input_name: Value,)*>($($input_name,)*);
+        #[allow(non_camel_case_types)]
+        #[derive(Clone)]
+        struct Evaluate<$($input_name: Value,)*>($($input_name,)*);
 
-            #[allow(non_camel_case_types)]
-            impl<$($input_name: Value,)*> $crate::intcode::Value for Evaluate<$($input_name,)*> {
-                fn get(&self, machine: &$crate::intcode::Machine) -> usize {
-                    let Evaluate($($input_name,)*) = self;
-                    $(let $input_name = $input_name.get(machine);)*
-                    $body
-                }
+        #[allow(non_camel_case_types)]
+        impl<$($input_name: Value,)*> $crate::intcode::Value for Evaluate<$($input_name,)*> {
+            fn get(&self, machine: &$crate::intcode::Machine) -> usize {
+                let Evaluate($($input_name,)*) = self;
+                $(let $input_name = $input_name.get(machine);)*
+                $body
             }
-
-            #[allow(non_camel_case_types)]
-            impl<$($input_name: Value,)*> std::fmt::Debug for Evaluate<$($input_name,)*> {
-                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    let Evaluate($($input_name,)*) = self;
-                    f.debug_struct(stringify!($name))
-                        $(.field(stringify!($input_name), &$input_name))*
-                        .finish()
-                }
-            }
-
-            output.set_to(Evaluate($($input_name,)*)).then(new_ip.set_ip())
         }
-    )*}
+
+        #[allow(non_camel_case_types)]
+        impl<$($input_name: Value,)*> std::fmt::Debug for Evaluate<$($input_name,)*> {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                let Evaluate($($input_name,)*) = self;
+                f.debug_struct(stringify!($name))
+                    $(.field(stringify!($input_name), &$input_name))*
+                    .finish()
+            }
+        }
+
+        Evaluate($($input_name,)*).set_at(output).then(new_ip.set_ip())
+    }}
 }
