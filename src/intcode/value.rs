@@ -107,7 +107,8 @@ pub trait Addressed: Sized + Debug + Clone {
 impl<T: Addressed> Value for T {
     #[inline(always)]
     fn get(&self, machine: &Machine) -> usize {
-        machine.memory[self.address(machine)]
+        let address = self.address(machine);
+        machine.memory[address]
     }
 }
 
