@@ -21,11 +21,12 @@ fn solve(input: &str) -> impl Display {}
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
+use std::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::fmt::{self, Display, Formatter};
 use std::hash::Hash;
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 use std::iter::{self, FromIterator, FusedIterator, Peekable};
 use std::mem::{replace, swap};
 use std::ops::Add;
