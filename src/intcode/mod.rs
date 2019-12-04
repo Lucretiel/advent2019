@@ -8,25 +8,24 @@ pub mod value;
 use std::fmt::Debug;
 
 use crate::select_opcode;
-pub use machine::Machine;
-pub use operation::{Operation, ResetIp};
-pub use value::{address, Addressed, IPValue, Value, IP, binary};
+pub use machine::{initialize_to, Machine};
+pub use operation::Operation;
+pub use value::{address, binary, Addressed, IPValue, Value, IP};
 
-fn binary_opcode(func: impl Fn(usize, usize) -> usize + Clone) -> impl Operation<Result=()> + Clone + Debug {
-	binary(
-		IP.offset(1).deref(),
-		IP.offset(2).deref(),
-		func,
-	).set_at(IP.offset(3).deref())
-	.then(IP.offset(4).set_ip())
+fn binary_opcode(
+    func: impl Fn(usize, usize) -> usize + Clone,
+) -> impl Operation<Result = ()> + Clone + Debug {
+    binary(IP.offset(1).deref(), IP.offset(2).deref(), func)
+        .set_at(IP.offset(3).deref())
+        .then(IP.offset(4).set_ip())
 }
 
 // Run one step of the machine
 #[inline(always)]
 pub fn step() -> impl Operation + Clone + Debug {
-    select_opcode!{
-    	1 => binary_opcode(|a, b| a + b),
-    	2 => binary_opcode(|a, b| a * b),
+    select_opcode! {
+        1 => binary_opcode(|a, b| a + b),
+        2 => binary_opcode(|a, b| a * b),
     }
 }
 

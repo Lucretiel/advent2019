@@ -18,15 +18,13 @@ fn solve(input: &str) -> impl Display {
 
     for noun in 0..100 {
         for verb in 0..100 {
-            let arch = proc! {
-                init.dup();
+            let result = machine.execute(proc! {
+                initialize_to(&init);
                 address(1).set_to(noun);
                 address(2).set_to(verb);
                 intcode::run();
                 address(0)
-            };
-
-            let result = machine.execute(arch.clone());
+            });
 
             if result == 19690720 {
                 return (100 * noun) + verb;

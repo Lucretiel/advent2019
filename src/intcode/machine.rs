@@ -28,11 +28,6 @@ impl Machine {
     pub fn execute<T: Operation>(&mut self, op: T) -> T::Result {
         op.execute(self)
     }
-
-    /// Create an operation that clones this machine
-    pub fn dup(&self) -> CloneFrom {
-        CloneFrom { machine: self }
-    }
 }
 
 impl FromIterator<usize> for Machine {
@@ -53,4 +48,10 @@ impl<'a> Operation for CloneFrom<'a> {
     fn execute(&self, machine: &mut Machine) {
         machine.clone_from(self.machine)
     }
+}
+
+/// Create an operation that, when executed, clones this machine to the
+/// executing machine (including the IP)
+pub fn initialize_to(machine: &Machine) -> CloneFrom {
+    CloneFrom { machine }
 }

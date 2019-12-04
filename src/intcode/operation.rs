@@ -25,24 +25,32 @@ pub trait Operation: Sized {
         UntilHalt { body: self }
     }
 
+    /// For operations which return an option: run this operation, and if
+    /// it returns None, run the other operation.
     #[inline(always)]
-    fn or_else<R, T: Operation<Result=Option<R>>>(self, second: T) -> OrElse<Self, T>
-        where Self: Operation<Result=Option<R>>
+    fn or_else<R, T: Operation<Result = Option<R>>>(self, second: T) -> OrElse<Self, T>
+    where
+        Self: Operation<Result = Option<R>>,
     {
-        OrElse {first: self, second}
+        OrElse {
+            first: self,
+            second,
+        }
     }
 
+    /// For operations which return an option: run this operation. If it
+    /// returns None, panic with an error indicating a bad opcode.
     #[inline(always)]
     fn or_invalid_opcode<R>(self) -> OrInvalidOpcode<Self>
-        where Self: Operation<Result=Option<R>>
+    where
+        Self: Operation<Result = Option<R>>,
     {
         OrInvalidOpcode { body: self }
     }
 }
 
-
-
-/// Create an operation that runs a series of Operations in order.
+/// Create an operation that runs a series of Operations in order. Returns
+/// the result of the last operation.
 #[macro_export]
 macro_rules! proc {
     ($first:expr $(; $tail:expr)*) => {
@@ -50,7 +58,8 @@ macro_rules! proc {
     }
 }
 
-/// A chain operation runs two operations in sequence
+/// A chain operation runs two operations in sequence. Its result is the result
+/// of the second operation.
 #[derive(Debug, Clone)]
 pub struct Chain<T: Operation, U: Operation> {
     first: T,
@@ -74,14 +83,16 @@ pub struct OrElse<T: Operation, U: Operation> {
     second: U,
 }
 
-impl<R, T: Operation<Result=Option<R>>, U: Operation<Result=Option<R>>> Operation for OrElse<T, U> {
+impl<R, T: Operation<Result = Option<R>>, U: Operation<Result = Option<R>>> Operation
+    for OrElse<T, U>
+{
     type Result = Option<R>;
 
     #[inline(always)]
     fn execute(&self, machine: &mut Machine) -> Self::Result {
         match self.first.execute(machine) {
             Some(result) => Some(result),
-            None => self.second.execute(machine)
+            None => self.second.execute(machine),
         }
     }
 }
@@ -89,17 +100,18 @@ impl<R, T: Operation<Result=Option<R>>, U: Operation<Result=Option<R>>> Operatio
 /// Execute the operation. If it returns none, panic with an error about a bad opcode.
 #[derive(Debug, Clone)]
 pub struct OrInvalidOpcode<T: Operation> {
-    body: T
+    body: T,
 }
 
-impl<R, T: Operation<Result=Option<R>>> Operation for OrInvalidOpcode<T> {
+impl<R, T: Operation<Result = Option<R>>> Operation for OrInvalidOpcode<T> {
     type Result = R;
 
     #[inline(always)]
     fn execute(&self, machine: &mut Machine) -> R {
         match self.body.execute(machine) {
             Some(result) => result,
-            None => panic!("Invalid opcode at index {}: {}",
+            None => panic!(
+                "Invalid opcode at index {}: {}",
                 IP.address(machine),
                 IP.get(machine),
             ),
@@ -124,8 +136,10 @@ impl<T: Operation> Operation for UntilHalt<T> {
     }
 }
 
+/// Run the inner operation if the current opcode matches the given opcode.
+/// Wrap the result in an Option and return None if the opcode didn't match.
 #[derive(Debug, Clone)]
-pub struct MatchOpcode<T: Operation>{
+pub struct MatchOpcode<T: Operation> {
     body: T,
     opcode: usize,
 }
@@ -148,6 +162,7 @@ pub fn match_opcode<T: Operation>(opcode: usize, body: T) -> MatchOpcode<T> {
     MatchOpcode { opcode, body }
 }
 
+/// Create a series of chained MatchOpcode operations, with a trailing OrInvalidOpcode
 #[macro_export]
 macro_rules! select_opcode {
     ($code:literal => $op:expr, $($tail_code:literal => $tail_op:expr,)*) => {
@@ -176,7 +191,7 @@ impl<S: Value, D: Addressed> Operation for Set<S, D> {
     }
 }
 
-/// Set the IP to the value indicated
+/// Set the IP to the address indicated
 #[derive(Debug, Clone)]
 pub struct AdvanceIp<T: Addressed> {
     target: T,
@@ -194,16 +209,4 @@ impl<T: Addressed> Operation for AdvanceIp<T> {
 
 pub fn advance_ip<T: Addressed>(target: T) -> AdvanceIp<T> {
     AdvanceIp { target }
-}
-
-#[derive(Debug, Clone)]
-pub struct ResetIp;
-
-impl Operation for ResetIp {
-    type Result = ();
-
-    #[inline(always)]
-    fn execute(&self, machine: &mut Machine) {
-        machine.instruction_pointer = 0;
-    }
 }

@@ -21,37 +21,8 @@ pub trait Value: Sized {
     }
 
     #[inline(always)]
-    fn map<F: Fn(usize)-> usize>(self, func: F) -> Unary<Self, F> {
+    fn map<F: Fn(usize) -> usize>(self, func: F) -> Unary<Self, F> {
         Unary { value: self, func }
-    }
-}
-
-/// A value can be used as an operation that returns the value
-impl<T: Value> Operation for T {
-    type Result = usize;
-
-    #[inline(always)]
-    fn execute(&self, machine: &mut Machine) -> usize {
-        self.get(machine)
-    }
-}
-
-/// A usize acts as a literal value; it always returns itself.
-impl Value for usize {
-    #[inline(always)]
-    fn get(&self, _machine: &Machine) -> usize {
-        *self
-    }
-}
-
-/// The actual value of the current instruction pointer
-#[derive(Debug, Clone)]
-pub struct IPValue;
-
-impl Value for IPValue {
-    #[inline(always)]
-    fn get(&self, machine: &Machine) -> usize {
-        machine.instruction_pointer
     }
 }
 
@@ -87,6 +58,17 @@ pub trait Addressed: Sized {
     }
 }
 
+/// A value can be used as an operation that returns the value
+impl<T: Value> Operation for T {
+    type Result = usize;
+
+    #[inline(always)]
+    fn execute(&self, machine: &mut Machine) -> usize {
+        self.get(machine)
+    }
+}
+
+/// An addressed value returns the value in the machine at the given address
 impl<T: Addressed> Value for T {
     #[inline(always)]
     fn get(&self, machine: &Machine) -> usize {
@@ -95,10 +77,30 @@ impl<T: Addressed> Value for T {
     }
 }
 
+/// A usize acts as a literal value; it always returns itself.
+impl Value for usize {
+    #[inline(always)]
+    fn get(&self, _machine: &Machine) -> usize {
+        *self
+    }
+}
+
+/// The actual value of the current instruction pointer. Use `IP` to get the
+/// value in memory at that value.
+#[derive(Debug, Clone)]
+pub struct IPValue;
+
+impl Value for IPValue {
+    #[inline(always)]
+    fn get(&self, machine: &Machine) -> usize {
+        machine.instruction_pointer
+    }
+}
+
 /// The value *at* the current instruction pointer
 pub const IP: Deref<IPValue> = Deref { inner: IPValue };
 
-/// A value at a positive offset from another value
+/// A addressed value at a positive offset from another addressed value.
 #[derive(Debug, Clone)]
 pub struct Relative<T: Addressed, O: Value> {
     inner: T,
@@ -130,8 +132,9 @@ pub const fn address(value: usize) -> Deref<usize> {
     Deref { inner: value }
 }
 
+/// Apply a mapping function to the underlying value
 #[derive(Clone)]
-pub struct Unary<T: Value, F: Fn(usize) -> usize>{
+pub struct Unary<T: Value, F: Fn(usize) -> usize> {
     value: T,
     func: F,
 }
@@ -152,8 +155,9 @@ impl<T: Value + Debug, F: Fn(usize) -> usize> Debug for Unary<T, F> {
     }
 }
 
+// Compute a new value from two inner value
 #[derive(Clone)]
-pub struct Binary<T: Value, U: Value, F: Fn(usize, usize) -> usize>{
+pub struct Binary<T: Value, U: Value, F: Fn(usize, usize) -> usize> {
     lhs: T,
     rhs: U,
     func: F,
@@ -177,6 +181,10 @@ impl<T: Value + Debug, U: Value + Debug, F: Fn(usize, usize) -> usize> Debug for
 }
 
 #[inline(always)]
-pub fn binary<T: Value, U: Value, F: Fn(usize, usize) -> usize>(lhs: T, rhs: U, func: F) -> Binary<T, U, F> {
-    Binary{lhs, rhs, func}
+pub fn binary<T: Value, U: Value, F: Fn(usize, usize) -> usize>(
+    lhs: T,
+    rhs: U,
+    func: F,
+) -> Binary<T, U, F> {
+    Binary { lhs, rhs, func }
 }
