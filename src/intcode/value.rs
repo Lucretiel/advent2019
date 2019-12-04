@@ -3,7 +3,7 @@ use super::{Machine, Operation};
 use std::fmt::{self, Debug, Formatter};
 
 /// A value which can be received or computed from a machine.
-pub trait Value: Sized + Debug + Clone {
+pub trait Value: Sized {
     /// Get the value from the machine
     fn get(&self, machine: &Machine) -> usize;
 
@@ -18,6 +18,11 @@ pub trait Value: Sized + Debug + Clone {
     #[inline(always)]
     fn set_at<T: Addressed>(self, dest: T) -> Set<Self, T> {
         Set { source: self, dest }
+    }
+
+    #[inline(always)]
+    fn map<F: Fn(usize)-> usize>(self, func: F) -> Unary<Self, F> {
+        Unary { value: self, func }
     }
 }
 
@@ -39,28 +44,6 @@ impl Value for usize {
     }
 }
 
-#[macro_export]
-macro_rules! const_value {
-    ($value:expr) => {{
-        #[derive(Clone)]
-        struct Const();
-
-        impl $crate::value::Value for Const {
-            fn get(&self, _machine: &crate::intcode::Machine) -> usize {
-                $value
-            }
-        }
-
-        impl std::fmt::Debug for Const {
-            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                f.debug_tuple("Const").field(&($value)).finish()
-            }
-        }
-
-        Const()
-    }};
-}
-
 /// The actual value of the current instruction pointer
 #[derive(Debug, Clone)]
 pub struct IPValue;
@@ -74,7 +57,7 @@ impl Value for IPValue {
 
 /// A value associated with an addressed location in the machine. Can be used
 /// as an Value, and can also be used as a destination for writes.
-pub trait Addressed: Sized + Debug + Clone {
+pub trait Addressed: Sized {
     /// Get the address of this value
     fn address(&self, machine: &Machine) -> usize;
 
@@ -145,4 +128,55 @@ impl<T: Value> Addressed for Deref<T> {
 #[inline(always)]
 pub const fn address(value: usize) -> Deref<usize> {
     Deref { inner: value }
+}
+
+#[derive(Clone)]
+pub struct Unary<T: Value, F: Fn(usize) -> usize>{
+    value: T,
+    func: F,
+}
+
+impl<T: Value, F: Fn(usize) -> usize> Value for Unary<T, F> {
+    #[inline(always)]
+    fn get(&self, machine: &Machine) -> usize {
+        (self.func)(self.value.get(machine))
+    }
+}
+
+impl<T: Value + Debug, F: Fn(usize) -> usize> Debug for Unary<T, F> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("Unary")
+            .field("value", &self.value)
+            .field("func", &"<closure>")
+            .finish()
+    }
+}
+
+#[derive(Clone)]
+pub struct Binary<T: Value, U: Value, F: Fn(usize, usize) -> usize>{
+    lhs: T,
+    rhs: U,
+    func: F,
+}
+
+impl<T: Value, U: Value, F: Fn(usize, usize) -> usize> Value for Binary<T, U, F> {
+    #[inline(always)]
+    fn get(&self, machine: &Machine) -> usize {
+        (self.func)(self.lhs.get(machine), self.rhs.get(machine))
+    }
+}
+
+impl<T: Value + Debug, U: Value + Debug, F: Fn(usize, usize) -> usize> Debug for Binary<T, U, F> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("Binary")
+            .field("lhs", &self.lhs)
+            .field("rhs", &self.rhs)
+            .field("func", &"<closure>")
+            .finish()
+    }
+}
+
+#[inline(always)]
+pub fn binary<T: Value, U: Value, F: Fn(usize, usize) -> usize>(lhs: T, rhs: U, func: F) -> Binary<T, U, F> {
+    Binary{lhs, rhs, func}
 }

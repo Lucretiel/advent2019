@@ -1,9 +1,8 @@
 use super::{Addressed, Machine, Value, IP};
-use crate::const_value;
 use std::fmt::{self, Debug, Formatter};
 
 /// An operation applies some new state to a machine
-pub trait Operation: Sized + Debug + Clone {
+pub trait Operation: Sized {
     type Result;
 
     /// Run this operation on the machine
@@ -25,7 +24,23 @@ pub trait Operation: Sized + Debug + Clone {
     fn until_halt(self) -> UntilHalt<Self> {
         UntilHalt { body: self }
     }
+
+    #[inline(always)]
+    fn or_else<R, T: Operation<Result=Option<R>>>(self, second: T) -> OrElse<Self, T>
+        where Self: Operation<Result=Option<R>>
+    {
+        OrElse {first: self, second}
+    }
+
+    #[inline(always)]
+    fn or_invalid_opcode<R>(self) -> OrInvalidOpcode<Self>
+        where Self: Operation<Result=Option<R>>
+    {
+        OrInvalidOpcode { body: self }
+    }
 }
+
+
 
 /// Create an operation that runs a series of Operations in order.
 #[macro_export]
@@ -51,6 +66,47 @@ impl<T: Operation, U: Operation> Operation for Chain<T, U> {
     }
 }
 
+/// Execute the first operation. If it returns None, execute the second operation.
+/// Used to chain together MatchOpcode.
+#[derive(Debug, Clone)]
+pub struct OrElse<T: Operation, U: Operation> {
+    first: T,
+    second: U,
+}
+
+impl<R, T: Operation<Result=Option<R>>, U: Operation<Result=Option<R>>> Operation for OrElse<T, U> {
+    type Result = Option<R>;
+
+    #[inline(always)]
+    fn execute(&self, machine: &mut Machine) -> Self::Result {
+        match self.first.execute(machine) {
+            Some(result) => Some(result),
+            None => self.second.execute(machine)
+        }
+    }
+}
+
+/// Execute the operation. If it returns none, panic with an error about a bad opcode.
+#[derive(Debug, Clone)]
+pub struct OrInvalidOpcode<T: Operation> {
+    body: T
+}
+
+impl<R, T: Operation<Result=Option<R>>> Operation for OrInvalidOpcode<T> {
+    type Result = R;
+
+    #[inline(always)]
+    fn execute(&self, machine: &mut Machine) -> R {
+        match self.body.execute(machine) {
+            Some(result) => result,
+            None => panic!("Invalid opcode at index {}: {}",
+                IP.address(machine),
+                IP.get(machine),
+            ),
+        }
+    }
+}
+
 /// Run the inner operation until the current IP value is 99
 #[derive(Debug, Clone)]
 pub struct UntilHalt<T: Operation> {
@@ -68,40 +124,37 @@ impl<T: Operation> Operation for UntilHalt<T> {
     }
 }
 
-// Create an operation which runs an operation given an opcode. Panics on
-// an unrecognized code. Can't (currently) capture locals. Currently throws
-// away the result type.
+#[derive(Debug, Clone)]
+pub struct MatchOpcode<T: Operation>{
+    body: T,
+    opcode: usize,
+}
+
+impl<T: Operation> Operation for MatchOpcode<T> {
+    type Result = Option<T::Result>;
+
+    #[inline(always)]
+    fn execute(&self, machine: &mut Machine) -> Option<T::Result> {
+        if machine.get(IP) == self.opcode {
+            Some(self.body.execute(machine))
+        } else {
+            None
+        }
+    }
+}
+
+#[inline(always)]
+pub fn match_opcode<T: Operation>(opcode: usize, body: T) -> MatchOpcode<T> {
+    MatchOpcode { opcode, body }
+}
+
 #[macro_export]
-macro_rules! match_opcode {
-    ($($code:pat => $op:expr,)*) => {{
-        #[derive(Clone)]
-        struct LocalOpcodeMatcher();
-
-        impl $crate::intcode::Operation for LocalOpcodeMatcher {
-            type Result = ();
-
-            fn execute(&self, machine: &mut $crate::intcode::Machine) {
-                match machine.get($crate::intcode::IP) {
-                    $($code => { $crate::intcode::Operation::execute(&$op, machine); })*
-                    code => panic!(
-                        "Illegal opcode at index {}: {}",
-                        machine.get($crate::intcode::IPValue),
-                        code
-                    )
-                }
-            }
-        }
-
-        impl std::fmt::Debug for LocalOpcodeMatcher {
-            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                f.debug_struct("LocalOpcodeMatcher")
-                    $(.field(stringify!($code), &$op))*
-                    .finish()
-            }
-        }
-
-        LocalOpcodeMatcher()
-    }}
+macro_rules! select_opcode {
+    ($code:literal => $op:expr, $($tail_code:literal => $tail_op:expr,)*) => {
+        $crate::intcode::operation::match_opcode($code, $op)
+            $(.or_else($crate::intcode::operation::match_opcode($tail_code, $tail_op)))*
+            .or_invalid_opcode()
+    }
 }
 
 /// An operation that sets the value at a given destination to the given value.
@@ -153,55 +206,4 @@ impl Operation for ResetIp {
     fn execute(&self, machine: &mut Machine) {
         machine.instruction_pointer = 0;
     }
-}
-
-#[macro_export]
-macro_rules! opcode_values {
-    ($index:expr;) => {};
-
-    ($index:expr; $name:ident, $($tail:ident,)*) => {
-        let $name = $crate::intcode::IP.offset($crate::const_value!($index));
-        $crate::opcode_values!{$index + 1; $($tail,)*}
-    };
-
-    ($($name:ident,)*) => {
-        $crate::opcode_values!(1; $($name,)*)
-    }
-}
-
-/// An opcode takes a series of values (starting with IP+1, IP+2, etc),
-/// processes them in some way, then writes them to IP + N, then sets IP to
-/// IP + N + 1
-#[macro_export]
-macro_rules! opcode {
-    ($(($input_name:ident $($extract:tt)*))* {$body:expr}) => {{
-        $crate::opcode_values!{$($input_name,)* output, new_ip,}
-        $(let $input_name = $input_name $($extract)*;)*
-        let output = output.deref();
-
-        #[allow(non_camel_case_types)]
-        #[derive(Clone)]
-        struct Evaluate<$($input_name: Value,)*>($($input_name,)*);
-
-        #[allow(non_camel_case_types)]
-        impl<$($input_name: Value,)*> $crate::intcode::Value for Evaluate<$($input_name,)*> {
-            fn get(&self, machine: &$crate::intcode::Machine) -> usize {
-                let Evaluate($($input_name,)*) = self;
-                $(let $input_name = $input_name.get(machine);)*
-                $body
-            }
-        }
-
-        #[allow(non_camel_case_types)]
-        impl<$($input_name: Value,)*> std::fmt::Debug for Evaluate<$($input_name,)*> {
-            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                let Evaluate($($input_name,)*) = self;
-                f.debug_struct(stringify!($name))
-                    $(.field(stringify!($input_name), &$input_name))*
-                    .finish()
-            }
-        }
-
-        Evaluate($($input_name,)*).set_at(output).then(new_ip.set_ip())
-    }}
 }
