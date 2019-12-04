@@ -75,7 +75,7 @@ impl Password {
                 run_length = 1;
             }
         }
-        false
+        run_length == 2
     }
 
     // ensure that a pair exists somewhere by incrementing. May do nothing;
