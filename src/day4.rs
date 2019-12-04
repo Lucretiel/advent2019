@@ -1,5 +1,5 @@
 #![allow(unused_imports)]
-
+#![feature(const_generics)]
 // SOLUTION CODE GOES HERE
 
 // Err means there was an overflow
@@ -50,7 +50,7 @@ impl Password {
     fn inc_at(&mut self, index: usize) -> OverflowResult {
         match self.0[index].inc() {
             Ok(()) => {
-                for i in (index+1)..6 {
+                for i in (index + 1)..6 {
                     self.0[i] = self.0[index];
                 }
                 Ok(())
@@ -69,7 +69,7 @@ impl Password {
             if digit == run_value {
                 run_length += 1;
             } else if run_length == 2 {
-                return true
+                return true;
             } else {
                 run_value = digit;
                 run_length = 1;
@@ -139,5 +139,3 @@ use std::rc::{Rc, Weak};
 use std::str::FromStr;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
-
-
