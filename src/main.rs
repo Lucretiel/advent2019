@@ -1,1 +1,1 @@
-day4.rs
+day6part2.rs

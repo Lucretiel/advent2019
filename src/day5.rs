@@ -3,36 +3,9 @@
 
 // SOLUTION CODE GOES HERE
 
-// Remove if this is not an intcode problem
-mod intcode;
-use intcode::*;
-
 #[inline(always)]
 fn solve(input: &str) -> impl Display {
-    let init: intcode::Machine = input
-        .trim()
-        .split(',')
-        .map(|value| value.parse().unwrap())
-        .collect();
 
-    let mut machine = intcode::Machine::default();
-
-    for noun in 0..100isize {
-        for verb in 0..100isize {
-            let result = machine.execute(proc! {
-                initialize_to(&init);
-                address(1usize).set_to(noun);
-                address(2usize).set_to(verb);
-                intcode::step().until_halt();
-                address(0usize)
-            });
-
-            if result == 19690720 {
-                return (100 * noun) + verb;
-            }
-        }
-    }
-    panic!("Couldn't find a solution")
 }
 
 /*
@@ -47,12 +20,12 @@ fn solve(input: &str) -> impl Display {
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
-use std::cell::Cell;
+use std::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::fmt::{self, Display, Formatter};
 use std::hash::Hash;
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 use std::iter::{self, FromIterator, FusedIterator, Peekable};
 use std::mem::{replace, swap};
 use std::ops::Add;
@@ -70,6 +43,9 @@ use joinery::prelude::*;
 // Grids
 use gridly::prelude::*;
 use gridly_grids::*;
+
+// Generation-based simulations
+use generations::*;
 
 // Formatting things without creating intermediary strings
 use lazy_format::lazy_format;

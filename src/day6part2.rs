@@ -1,38 +1,61 @@
 #![allow(unused_imports)]
-#![feature(const_generics)]
 
 // SOLUTION CODE GOES HERE
 
-// Remove if this is not an intcode problem
-mod intcode;
-use intcode::*;
+fn get_length<'a>(
+    object: &'a str,
+    orbits: &HashMap<&'a str, &'a str>,
+    lengths: &mut HashMap<&'a str, usize>
+) -> usize {
+    match lengths.get(object) {
+        Some(&len) => len,
+        None => {
+            let len = match orbits.get(object) {
+                Some(parent) => get_length(parent, orbits, lengths) + 1,
+                None => 0
+            };
+            lengths.insert(object, len);
+            len
+        }
+    }
+}
+
 
 #[inline(always)]
-fn solve(input: &str) -> impl Display {
-    let init: intcode::Machine = input
-        .trim()
-        .split(',')
-        .map(|value| value.parse().unwrap())
+fn solve(input: &str) -> usize {
+    let orbit_pattern = Regex::new(r"^([A-Z0-9a-z]+)\)([A-Z0-9a-z]+)$").expect("Failed to compile regex");
+
+    // key: child, value: parent
+    let orbits: HashMap<&str, &str> = input
+        .split_whitespace()
+        .map(|orbit| orbit_pattern.captures(orbit).expect("Failed to match regex"))
+        .map(|caps| (caps.field(2), caps.field(1)))
         .collect();
 
-    let mut machine = intcode::Machine::default();
+    let mut my_path: HashMap<&str, usize> = HashMap::new();
+    let mut len = 0;
+    let mut ptr = orbits.get("YOU").unwrap();
 
-    for noun in 0..100isize {
-        for verb in 0..100isize {
-            let result = machine.execute(proc! {
-                initialize_to(&init);
-                address(1usize).set_to(noun);
-                address(2usize).set_to(verb);
-                intcode::step().until_halt();
-                address(0usize)
-            });
+    while *ptr != "COM" {
+        my_path.insert(ptr, len);
+        len += 1;
+        ptr = orbits.get(ptr).unwrap();
+    }
 
-            if result == 19690720 {
-                return (100 * noun) + verb;
+    let mut len = 0;
+    let mut ptr = orbits.get("SAN").unwrap();
+
+    while *ptr != "COM" {
+        match my_path.get(ptr) {
+            Some(intersection) => return intersection + len,
+            None => {
+                len += 1;
+                ptr = orbits.get(ptr).unwrap();
             }
         }
     }
-    panic!("Couldn't find a solution")
+
+    panic!("No intersection")
 }
 
 /*
@@ -47,12 +70,12 @@ fn solve(input: &str) -> impl Display {
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
-use std::cell::Cell;
+use std::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::fmt::{self, Display, Formatter};
 use std::hash::Hash;
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 use std::iter::{self, FromIterator, FusedIterator, Peekable};
 use std::mem::{replace, swap};
 use std::ops::Add;
@@ -70,6 +93,9 @@ use joinery::prelude::*;
 // Grids
 use gridly::prelude::*;
 use gridly_grids::*;
+
+// Generation-based simulations
+use generations::*;
 
 // Formatting things without creating intermediary strings
 use lazy_format::lazy_format;
