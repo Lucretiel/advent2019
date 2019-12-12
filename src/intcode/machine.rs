@@ -1,57 +1,46 @@
 use std::iter::FromIterator;
 
-use super::{Addressed, Operation, Value};
+use super::Value;
 
 #[derive(Debug, Clone, Default)]
 pub struct Machine {
     pub(super) instruction_pointer: usize,
-    pub(super) memory: Vec<usize>,
+    pub(super) memory: Vec<isize>,
 }
 
 impl Machine {
     /// Create a new machine with some seed memory
-    #[inline(always)]
-    pub fn new(memory: Vec<usize>) -> Self {
+    pub fn new(memory: Vec<isize>) -> Self {
         Machine {
             instruction_pointer: 0,
             memory,
         }
     }
 
-    /// Get the value described by `Value`
-    #[inline(always)]
-    pub fn get(&self, value: impl Value) -> usize {
-        value.get(self)
+    /// Read a machine from comma-separated input
+    pub fn from_csv(input: &str) -> Self {
+        input
+            .trim()
+            .trim_matches(',')
+            .split(',')
+            .map(|value| value.parse().expect("Failed to parse machine input"))
+            .collect()
     }
 
-    /// Execute an operation described by `op`
-    pub fn execute<T: Operation>(&mut self, op: T) -> T::Result {
-        op.execute(self)
+    /// Get the value described by `Value`
+    pub fn get<T: Value>(&self, value: T) -> T::Output {
+        value.get(self)
     }
 }
 
-impl FromIterator<usize> for Machine {
-    fn from_iter<I: IntoIterator<Item = usize>>(iter: I) -> Self {
+impl FromIterator<isize> for Machine {
+    fn from_iter<I: IntoIterator<Item = isize>>(iter: I) -> Self {
         Self::new(iter.into_iter().collect())
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct CloneFrom<'a> {
-    machine: &'a Machine,
-}
-
-impl<'a> Operation for CloneFrom<'a> {
-    type Result = ();
-
-    #[inline(always)]
-    fn execute(&self, machine: &mut Machine) {
-        machine.clone_from(self.machine)
+pub fn initialize_to(init: Machine) -> impl Fn(&mut Machine) {
+    move |machine| {
+        machine.clone_from(&init)
     }
-}
-
-/// Create an operation that, when executed, clones this machine to the
-/// executing machine (including the IP)
-pub fn initialize_to(machine: &Machine) -> CloneFrom {
-    CloneFrom { machine }
 }
