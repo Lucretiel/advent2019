@@ -14,6 +14,7 @@ gridly_grids = "0.3.0"
 jemallocator = "0.3.2"
 lazy_format = "1.7.4"
 nom = "5.0.1"
+permutohedron = "0.2.4"
 
 [profile.dev]
 panic = "abort"

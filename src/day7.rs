@@ -6,8 +6,34 @@
 mod intcode;
 use intcode::*;
 
+fn build_amp(
+    phase: isize,
+    input: impl IntoIterator<Item = isize>,
+    machine: Machine
+) -> impl Iterator<Item = isize> {
+    machine_iter(iter::once(phase).chain(input), machine)
+}
+
 #[inline(always)]
-fn solve(input: &str) -> impl Display {}
+fn solve(input: &str) -> impl Display {
+    let machine = Machine::from_csv(input);
+    let mut phases = [0, 1, 2, 3, 4];
+    let mut best = 0;
+
+    heap_recursive(&mut phases, |phases| {
+        let initial: Box<dyn Iterator<Item=isize>> = Box::new(iter::once(0));
+
+        let mut amp_chain = phases.iter().copied().fold(initial, |input, phase| {
+            Box::new(build_amp(phase, input, machine.clone()))
+        });
+
+        let result = amp_chain.next().unwrap();
+
+        best = best.max(result);
+    });
+
+    best
+}
 
 /*
  * SUPPORTING LIBRARY CODE GOES HERE:
@@ -50,6 +76,9 @@ use generations::*;
 
 // Formatting things without creating intermediary strings
 use lazy_format::lazy_format;
+
+// Permutations of things
+use permutohedron::{LexicalPermutation, heap_recursive, Heap};
 
 #[inline(always)]
 fn timed<T>(f: impl FnOnce() -> T) -> (T, Duration) {
