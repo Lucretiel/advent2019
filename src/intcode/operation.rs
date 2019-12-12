@@ -1,16 +1,61 @@
 use std::convert::{TryFrom, TryInto};
 use std::fmt::{self, Debug, Formatter};
 
-use super::{Addressed, Machine, Value, IP};
+use super::{AddUsize, Addressed, Machine, Value, IP};
 
-// Create an operation that runs A then B, returning the result of B
-pub fn chain<T>(
-    mut first: impl FnMut(&mut Machine),
-    mut second: impl FnMut(&mut Machine) -> T,
-) -> impl FnMut(&mut Machine) -> T {
-    move |machine| {
-        first(machine);
-        second(machine)
+#[must_use]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum MachineState {
+    Output(isize),
+    NeedInput,
+    Halt,
+}
+
+pub trait AsMachineState {
+    fn as_machine_state(&self) -> Option<MachineState>;
+}
+
+impl AsMachineState for MachineState {
+    #[inline]
+    fn as_machine_state(&self) -> Option<MachineState> {
+        Some(*self)
+    }
+}
+
+impl AsMachineState for Option<MachineState> {
+    #[inline]
+    fn as_machine_state(&self) -> Option<MachineState> {
+        *self
+    }
+}
+
+impl AsMachineState for () {
+    #[inline]
+    fn as_machine_state(&self) -> Option<MachineState> {
+        None
+    }
+}
+
+// Run an operation on a machine. Return if it returns a halt state.
+#[macro_export]
+macro_rules! try_op {
+    ($machine:ident . $operation:expr) => {
+        match $crate::intcode::operation::MachineState::as_machine_state(&$operation($machine)) {
+            Some(state) => return Some(state),
+            None => {}
+        }
+    }
+}
+
+// Create an operation that runs A, then B if A doesn't halt.
+pub fn chain<T: AsMachineState, U: AsMachineState>(
+    mut first: impl FnMut(&mut Machine) -> T,
+    mut second: impl FnMut(&mut Machine) -> U,
+) -> impl FnMut(&mut Machine) -> Option<MachineState> {
+    move |machine|
+        match first(machine).as_machine_state() {
+            Some(state) => Some(state),
+            None => second(machine).as_machine_state()
     }
 }
 
@@ -21,7 +66,7 @@ macro_rules! proc {
     ($first:expr) => {
         $first
     };
-    ($first:expr; $(; $rest:expr)*) => {
+    ($first:expr $(; $rest:expr)*) => {
         $crate::intcode::operation::chain(
             $first,
             $crate::intcode::operation::proc!($second $(; $rest)*)
@@ -29,50 +74,44 @@ macro_rules! proc {
     };
 }
 
-pub fn fetch_then<T: Value>(
+pub fn fetch_then<T: Value<Output=isize>>(
     value: T,
     mut op: impl FnMut(&mut Machine),
-) -> impl FnMut(&mut Machine) -> T::Output {
+) -> impl FnMut(&mut Machine) -> MachineState {
     move |machine| {
         let result = value.get(machine);
         op(machine);
-        result
+        MachineState::Output(result)
     }
 }
 
-pub fn fetch<T: Value>(value: T) -> impl Fn(&mut Machine) -> T::Output {
-    move |machine| value.get(machine)
-}
-
-/// Create an operation that runs an inner operation, then sets the result to
-/// an address. The address is evaluated before the operation.
-pub fn set_with(
-    mut operation: impl FnMut(&mut Machine) -> isize,
-    destination: impl Addressed,
+/// Common implementation for set and set_external
+fn set_impl(
+    mut get_value: impl FnMut(&Machine) -> isize,
+    destination: impl Addressed
 ) -> impl FnMut(&mut Machine) {
     move |machine| {
+        let value = get_value(machine);
         let address = destination.address(machine);
-        let value = operation(machine);
-        machine.memory[address] = value;
+        machine.set(address, value);
     }
 }
 
+/// Create an operation that sets a memory location using an external function.
+/// The function is called each time the operation is executed.
+pub fn set_external(
+    mut operation: impl FnMut() -> isize,
+    destination: impl Addressed,
+) -> impl FnMut(&mut Machine) {
+    set_impl(move |_machine| operation(), destination)
+}
+
+/// Create an operation that sets a value using a value
 pub fn set(
     value: impl Value<Output = isize>,
     destination: impl Addressed,
 ) -> impl FnMut(&mut Machine) {
-    set_with(fetch(value), destination)
-}
-
-pub fn until(
-    cond: impl Value<Output = bool>,
-    mut body: impl FnMut(&mut Machine),
-) -> impl FnMut(&mut Machine) {
-    move |machine| {
-        while !cond.get(machine) {
-            body(machine);
-        }
-    }
+    set_impl(move |machine| value.get(machine), destination)
 }
 
 pub fn set_ip(target: impl Addressed) -> impl Fn(&mut Machine) {
@@ -84,12 +123,4 @@ pub fn set_ip(target: impl Addressed) -> impl Fn(&mut Machine) {
 
 pub fn advance_ip(offset: usize) -> impl Fn(&mut Machine) {
     set_ip(IP.offset(offset))
-}
-
-/// Create an operation that doesn't do anything to the machine, but reads an
-/// input from the stream.
-pub fn use_input(input: impl IntoIterator<Item = isize>) -> impl FnMut(&mut Machine) -> isize {
-    let mut iter = input.into_iter();
-
-    move |_machine| iter.next().expect("No more input available!")
 }

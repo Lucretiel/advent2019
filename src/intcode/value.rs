@@ -4,6 +4,26 @@ use std::convert::{TryFrom, TryInto};
 use std::fmt::{self, Debug, Display, Formatter};
 use std::mem;
 
+pub trait AddUsize: Sized + Copy {
+    fn add_usize(self, rhs: usize) -> usize;
+}
+
+impl AddUsize for usize {
+    fn add_usize(self, rhs: usize) -> usize {
+        self + rhs
+    }
+}
+
+impl AddUsize for isize {
+    fn add_usize(self, rhs: usize) -> usize {
+        if self.is_negative() {
+            rhs - (self.abs() as usize)
+        } else {
+            rhs + (self as usize)
+        }
+    }
+}
+
 /// A value which can be received or computed from a machine.
 pub trait Value: Sized {
     type Output;
@@ -35,7 +55,11 @@ pub trait Addressed: Sized {
 
     /// Get the value at the offset location from this one
     #[inline(always)]
-    fn offset(self, offset: usize) -> Relative<Self> {
+    fn offset<T>(self, offset: T) -> Relative<Self, T>
+    where
+        T: Value,
+        T::Output: AddUsize,
+    {
         Relative {
             inner: self,
             offset,
@@ -50,7 +74,7 @@ impl<T: Addressed> Value for T {
     #[inline(always)]
     fn get(&self, machine: &Machine) -> isize {
         let address = self.address(machine);
-        machine.memory[address]
+        machine.memory.get(address).copied().unwrap_or(0)
     }
 }
 
@@ -74,6 +98,16 @@ impl Value for usize {
     }
 }
 
+/// We have i32 as well for cases when rustc defaults an integer literal to i32
+impl Value for i32 {
+    type Output = isize;
+
+    #[inline(always)]
+    fn get(&self, _machine: &Machine) -> isize {
+        (*self) as isize
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct IP;
 
@@ -86,18 +120,24 @@ impl Addressed for IP {
 
 /// A addressed value at a positive offset from another addressed value.
 #[derive(Debug, Clone)]
-pub struct Relative<T: Addressed> {
+pub struct Relative<T: Addressed, U: Value>
+where
+    U::Output: AddUsize,
+{
     inner: T,
-    offset: usize,
+    offset: U,
 }
 
-impl<T: Addressed> Addressed for Relative<T> {
+impl<T: Addressed, U: Value> Addressed for Relative<T, U>
+where
+    U::Output: AddUsize,
+{
     #[inline(always)]
     fn address(&self, machine: &Machine) -> usize {
         let address = self.inner.address(machine);
-        let offset = self.offset;
+        let offset = self.offset.get(machine);
 
-        address + offset
+        offset.add_usize(address)
     }
 }
 

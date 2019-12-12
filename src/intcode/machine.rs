@@ -1,6 +1,6 @@
 use std::iter::FromIterator;
 
-use super::Value;
+use super::{Addressed, Value};
 
 #[derive(Debug, Clone, Default)]
 pub struct Machine {
@@ -10,11 +10,16 @@ pub struct Machine {
 
 impl Machine {
     /// Create a new machine with some seed memory
-    pub fn new(memory: Vec<isize>) -> Self {
+    pub const fn new(memory: Vec<isize>) -> Self {
         Machine {
             instruction_pointer: 0,
             memory,
         }
+    }
+
+    /// Create a new, empty machine.
+    pub const fn new_empty() -> Self {
+        Self::new(Vec::new())
     }
 
     /// Read a machine from comma-separated input
@@ -30,6 +35,16 @@ impl Machine {
     /// Get the value described by `Value`
     pub fn get<T: Value>(&self, value: T) -> T::Output {
         value.get(self)
+    }
+
+    pub fn set(&mut self, address: usize, value: isize) {
+        if address >= self.memory.len() {
+            // This correctly reserves ambitiously to prevent frequent
+            // allocations.
+            self.memory.resize_with(address + 1, Default::default);
+        }
+
+        self.memory[address] = value;
     }
 }
 

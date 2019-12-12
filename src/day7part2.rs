@@ -6,30 +6,54 @@
 mod intcode;
 use intcode::*;
 
-fn build_amp(
-    phase: isize,
-    input: impl IntoIterator<Item = isize>,
-    machine: Machine,
-) -> impl Iterator<Item = isize> {
-    machine_iter(iter::once(phase).chain(input), machine)
-}
+
 
 #[inline(always)]
 fn solve(input: &str) -> impl Display {
-    let machine = Machine::from_csv(input);
-    let mut phases = [0, 1, 2, 3, 4];
+    let init = Machine::from_csv(input);
+    let mut machines: [Machine; 5] = [
+        Machine::new_empty(),
+        Machine::new_empty(),
+        Machine::new_empty(),
+        Machine::new_empty(),
+        Machine::new_empty(),
+    ];
+    let mut phases = [5, 6, 7, 8, 9];
     let mut best = 0;
 
     heap_recursive(&mut phases, |phases| {
-        let initial: Box<dyn Iterator<Item = isize>> = Box::new(iter::once(0));
 
-        let mut amp_chain = phases.iter().copied().fold(initial, |input, phase| {
-            Box::new(build_amp(phase, input, machine.clone()))
-        });
+        machines[..]
+            .iter_mut()
+            .zip(phases.iter())
+            .for_each(|(machine, &phase)| {
+                // reset the machine
+                machine.clone_from(&init);
 
-        let result = amp_chain.next().unwrap();
+                // feed the phase into the machine
+                match feed(phase)(machine) {
+                    MachineState::NeedInput => {},
+                    MachineState::Output(..) => panic!("Unexpected output; only gave phase so far"),
+                    MachineState::Halt => panic!("Unexpected halt"),
+                }
 
-        best = best.max(result);
+            });
+
+        let mut final_signal = 0;
+        let mut signal = 0;
+
+        'outer: loop {
+            for machine in &mut machines {
+                match feed(signal)(machine) {
+                    MachineState::NeedInput => panic!("Unexpected request for input"),
+                    MachineState::Output(s) => signal = s,
+                    MachineState::Halt => break 'outer,
+                }
+            }
+            final_signal = signal;
+        }
+
+        best = final_signal.max(best);
     });
 
     best
