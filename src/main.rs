@@ -1,1 +1,0 @@
-day6part2.rs
