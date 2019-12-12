@@ -1,7 +1,7 @@
 use super::Machine;
 
 use std::convert::{TryFrom, TryInto};
-use std::fmt::{self, Debug, Formatter, Display};
+use std::fmt::{self, Debug, Display, Formatter};
 use std::mem;
 
 /// A value which can be received or computed from a machine.
@@ -14,7 +14,10 @@ pub trait Value: Sized {
     /// Turn the value into an address; create an `Addressed` which
     /// retreives the value at the address provided by this value
     #[inline(always)]
-    fn deref(self) -> Deref<Self> where Self::Output: TryInto<usize> {
+    fn deref(self) -> Deref<Self>
+    where
+        Self::Output: TryInto<usize>,
+    {
         Deref { inner: self }
     }
 
@@ -32,8 +35,7 @@ pub trait Addressed: Sized {
 
     /// Get the value at the offset location from this one
     #[inline(always)]
-    fn offset(self, offset: usize) -> Relative<Self>
-    {
+    fn offset(self, offset: usize) -> Relative<Self> {
         Relative {
             inner: self,
             offset,
@@ -84,14 +86,12 @@ impl Addressed for IP {
 
 /// A addressed value at a positive offset from another addressed value.
 #[derive(Debug, Clone)]
-pub struct Relative<T: Addressed>
-{
+pub struct Relative<T: Addressed> {
     inner: T,
     offset: usize,
 }
 
-impl<T: Addressed> Addressed for Relative<T>
-{
+impl<T: Addressed> Addressed for Relative<T> {
     #[inline(always)]
     fn address(&self, machine: &Machine) -> usize {
         let address = self.inner.address(machine);
@@ -104,22 +104,23 @@ impl<T: Addressed> Addressed for Relative<T>
 /// The value at the address of the inner value
 #[derive(Debug, Clone)]
 pub struct Deref<T: Value>
-    where T::Output: TryInto<usize>,
+where
+    T::Output: TryInto<usize>,
 {
     inner: T,
 }
 
 impl<R, T> Addressed for Deref<T>
-    where
-        R: TryInto<usize> + Display + Copy,
-        T: Value<Output=R>
+where
+    R: TryInto<usize> + Display + Copy,
+    T: Value<Output = R>,
 {
     #[inline(always)]
     fn address(&self, machine: &Machine) -> usize {
         let address = self.inner.get(machine);
-        address.try_into().unwrap_or_else(|_err| {
-            panic!("Invalid address: {}", address)
-        })
+        address
+            .try_into()
+            .unwrap_or_else(|_err| panic!("Invalid address: {}", address))
     }
 }
 
@@ -199,7 +200,7 @@ pub const fn opcode(instruction: isize) -> isize {
 // location and parameter modes
 #[derive(Debug, Clone)]
 pub struct Parameter {
-    index: usize
+    index: usize,
 }
 
 impl Addressed for Parameter {
@@ -212,7 +213,8 @@ impl Addressed for Parameter {
         match (opcode / 10isize.pow((index as u32) + 1)) % 10 {
             0 => IP.offset(index).deref().address(machine),
             1 => IP.offset(index).address(machine),
-            _ => panic!("Invalid opcode mode at address {}: {}",
+            _ => panic!(
+                "Invalid opcode mode at address {}: {}",
                 IP.address(machine),
                 opcode
             ),
@@ -226,7 +228,8 @@ pub fn param(index: usize) -> Parameter {
 
 #[derive(Debug, Clone)]
 pub struct CondAddress<C, T, F>
-    where C: Value<Output=bool>,
+where
+    C: Value<Output = bool>,
     T: Addressed,
     F: Addressed,
 {
@@ -236,7 +239,8 @@ pub struct CondAddress<C, T, F>
 }
 
 impl<C, T, F> Addressed for CondAddress<C, T, F>
-    where C: Value<Output=bool>,
+where
+    C: Value<Output = bool>,
     T: Addressed,
     F: Addressed,
 {
@@ -250,8 +254,14 @@ impl<C, T, F> Addressed for CondAddress<C, T, F>
 }
 
 pub fn cond_address<C, T, F>(cond: C, if_true: T, if_false: F) -> CondAddress<C, T, F>
-    where C: Value<Output=bool>,
+where
+    C: Value<Output = bool>,
     T: Addressed,
-    F: Addressed {
-        CondAddress{cond, if_true, if_false}
+    F: Addressed,
+{
+    CondAddress {
+        cond,
+        if_true,
+        if_false,
     }
+}

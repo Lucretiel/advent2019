@@ -40,7 +40,5 @@ impl FromIterator<isize> for Machine {
 }
 
 pub fn initialize_to(init: Machine) -> impl Fn(&mut Machine) {
-    move |machine| {
-        machine.clone_from(&init)
-    }
+    move |machine| machine.clone_from(&init)
 }

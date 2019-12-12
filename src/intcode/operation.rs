@@ -1,14 +1,13 @@
+use std::convert::{TryFrom, TryInto};
 use std::fmt::{self, Debug, Formatter};
-use std::convert::{TryInto, TryFrom};
 
 use super::{Addressed, Machine, Value, IP};
-
 
 // Create an operation that runs A then B, returning the result of B
 pub fn chain<T>(
     mut first: impl FnMut(&mut Machine),
-    mut second: impl FnMut(&mut Machine) -> T) -> impl FnMut(&mut Machine) -> T
-{
+    mut second: impl FnMut(&mut Machine) -> T,
+) -> impl FnMut(&mut Machine) -> T {
     move |machine| {
         first(machine);
         second(machine)
@@ -41,12 +40,8 @@ pub fn fetch_then<T: Value>(
     }
 }
 
-pub fn fetch<T: Value>(
-    value: T,
-) -> impl Fn(&mut Machine) -> T::Output {
-    move |machine| {
-        value.get(machine)
-    }
+pub fn fetch<T: Value>(value: T) -> impl Fn(&mut Machine) -> T::Output {
+    move |machine| value.get(machine)
 }
 
 /// Create an operation that runs an inner operation, then sets the result to
@@ -63,14 +58,14 @@ pub fn set_with(
 }
 
 pub fn set(
-    value: impl Value<Output=isize>,
+    value: impl Value<Output = isize>,
     destination: impl Addressed,
 ) -> impl FnMut(&mut Machine) {
     set_with(fetch(value), destination)
 }
 
 pub fn until(
-    cond: impl Value<Output=bool>,
+    cond: impl Value<Output = bool>,
     mut body: impl FnMut(&mut Machine),
 ) -> impl FnMut(&mut Machine) {
     move |machine| {
@@ -80,26 +75,20 @@ pub fn until(
     }
 }
 
-pub fn set_ip(
-    target: impl Addressed,
-) -> impl Fn(&mut Machine) {
+pub fn set_ip(target: impl Addressed) -> impl Fn(&mut Machine) {
     move |machine| {
         let address = target.address(machine);
         machine.instruction_pointer = address;
     }
 }
 
-pub fn advance_ip(
-    offset: usize,
-) -> impl Fn(&mut Machine) {
+pub fn advance_ip(offset: usize) -> impl Fn(&mut Machine) {
     set_ip(IP.offset(offset))
 }
 
 /// Create an operation that doesn't do anything to the machine, but reads an
 /// input from the stream.
-pub fn use_input(
-    input: impl IntoIterator<Item=isize>,
-) -> impl FnMut(&mut Machine) -> isize {
+pub fn use_input(input: impl IntoIterator<Item = isize>) -> impl FnMut(&mut Machine) -> isize {
     let mut iter = input.into_iter();
 
     move |_machine| iter.next().expect("No more input available!")
