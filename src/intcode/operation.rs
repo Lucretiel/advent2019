@@ -93,7 +93,13 @@ fn set_impl(
     move |machine| {
         let value = get_value(machine);
         let address = destination.address(machine);
-        machine.set(address, value);
+        if address >= machine.memory.len() {
+            // This correctly reserves ambitiously to prevent frequent
+            // allocations.
+            machine.memory.resize_with(address + 1, Default::default);
+        }
+
+        machine.memory[address] = value;
     }
 }
 
@@ -123,4 +129,10 @@ pub fn set_ip(target: impl Addressed) -> impl Fn(&mut Machine) {
 
 pub fn advance_ip(offset: usize) -> impl Fn(&mut Machine) {
     set_ip(IP.offset(offset))
+}
+
+pub fn move_rb(offset: impl Value<Output=isize>) -> impl Fn(&mut Machine) {
+    move |machine| {
+        machine.relative_base += offset.get(machine);
+    }
 }

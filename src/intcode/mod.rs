@@ -59,6 +59,12 @@ pub fn step(input: impl IntoIterator<Item = isize>) -> impl FnMut(&mut Machine) 
     // anything; we rely on the loop break to push the value to output.
     let mut op_output = fetch_then(param(1), advance_ip(2));
 
+    // Update the relative base
+    let mut op_rb_offset = chain(
+        move_rb(param(1)),
+        advance_ip(2),
+    );
+
     // Get the current opcode; drop the mode bits
     let inst_opcode = IP.map(opcode);
 
@@ -72,6 +78,7 @@ pub fn step(input: impl IntoIterator<Item = isize>) -> impl FnMut(&mut Machine) 
             6 => op_jmp_false(machine).as_machine_state(),
             7 => op_lt(machine),
             8 => op_eq(machine),
+            9 => op_rb_offset(machine),
             99 => Some(MachineState::Halt),
             _ => panic!(
                 "Invalid opcode {} at address {}",
@@ -96,7 +103,9 @@ pub fn run_until_block(
 }
 
 // Create an operation that feeds a single value into the input of the machine,
-// the runs it until it blocks.
+// the runs it until it blocks. Note that there is no guarantee that the value
+// was actually read; it's possible for the machine to block without reading
+// anything. There's no way to detect this.
 pub fn feed(value: isize) -> impl FnMut(&mut Machine) -> MachineState {
     run_until_block(Some(value))
 }

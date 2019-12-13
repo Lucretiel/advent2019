@@ -45,6 +45,13 @@ pub trait Value: Sized {
     fn map<R, F: Fn(Self::Output) -> R>(self, func: F) -> Unary<Self, F> {
         Unary { value: self, func }
     }
+
+    #[inline(always)]
+    fn with_relative_base(self) -> RBOffset<Self>
+        where Self: Value<Output=isize>,
+    {
+        RBOffset {offset: self}
+    }
 }
 
 /// A value associated with an addressed location in the machine. Can be used
@@ -115,6 +122,20 @@ impl Addressed for IP {
     #[inline(always)]
     fn address(&self, machine: &Machine) -> usize {
         machine.instruction_pointer
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct RBOffset<T: Value<Output=isize>> {
+    offset: T
+}
+
+impl<T: Value<Output=isize>> Addressed for RBOffset<T> {
+    #[inline(always)]
+    fn address(&self, machine: &Machine) -> usize {
+        (machine.relative_base + self.offset.get(machine))
+            .try_into()
+            .unwrap()
     }
 }
 
@@ -253,6 +274,7 @@ impl Addressed for Parameter {
         match (opcode / 10isize.pow((index as u32) + 1)) % 10 {
             0 => IP.offset(index).deref().address(machine),
             1 => IP.offset(index).address(machine),
+            2 => IP.offset(index).with_relative_base().address(machine),
             _ => panic!(
                 "Invalid opcode mode at address {}: {}",
                 IP.address(machine),

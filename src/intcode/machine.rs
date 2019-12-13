@@ -5,6 +5,7 @@ use super::{Addressed, Value};
 #[derive(Debug, Clone, Default)]
 pub struct Machine {
     pub(super) instruction_pointer: usize,
+    pub(super) relative_base: isize,
     pub(super) memory: Vec<isize>,
 }
 
@@ -13,6 +14,7 @@ impl Machine {
     pub const fn new(memory: Vec<isize>) -> Self {
         Machine {
             instruction_pointer: 0,
+            relative_base: 0,
             memory,
         }
     }
@@ -35,16 +37,6 @@ impl Machine {
     /// Get the value described by `Value`
     pub fn get<T: Value>(&self, value: T) -> T::Output {
         value.get(self)
-    }
-
-    pub fn set(&mut self, address: usize, value: isize) {
-        if address >= self.memory.len() {
-            // This correctly reserves ambitiously to prevent frequent
-            // allocations.
-            self.memory.resize_with(address + 1, Default::default);
-        }
-
-        self.memory[address] = value;
     }
 }
 
