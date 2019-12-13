@@ -58,7 +58,7 @@ fn solve(input: &str) -> impl Display {
 
     let locations = row_range.flat_map(move |row| column_range.clone().map(move |col| row + col));
 
-    let result: Image<VecGrid<Color>> = input
+    let result = input
         .trim()
         .as_bytes()
         .chunks(6 * 25)
