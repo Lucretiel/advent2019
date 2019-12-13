@@ -9,7 +9,7 @@ use intcode::*;
 #[inline(always)]
 fn solve(input: &str) -> impl Display {
     let mut machine = Machine::from_csv(input);
-    let mut exec = machine_iter(Some(2), machine);
+    let mut exec = machine_iter(Some(2), &mut machine);
     exec.next().unwrap()
 }
 

@@ -112,13 +112,15 @@ pub fn feed(value: isize) -> impl FnMut(&mut Machine) -> MachineState {
 
 // Convert a machine and an input into an iterator over the machine's outputs
 // until it halts. Panics if it blocks on input.
-pub fn machine_iter(
-    input: impl IntoIterator<Item = isize>,
-    mut machine: Machine,
-) -> impl Iterator<Item = isize> {
+// The machine is guaranteed to be in a HALT state after the interator finishes,
+// but we still take it by reference so that it can be reset for future runs.
+pub fn machine_iter<'a>(
+    input: impl IntoIterator<Item = isize> + 'a,
+    machine: &'a mut Machine,
+) -> impl Iterator<Item = isize> + 'a {
     let mut run_machine = run_until_block(input);
 
-    iter::from_fn(move || match run_machine(&mut machine) {
+    iter::from_fn(move || match run_machine(machine) {
         MachineState::Output(value) => Some(value),
         MachineState::Halt => None,
         MachineState::NeedInput => panic!("Unexpected end of input"),
