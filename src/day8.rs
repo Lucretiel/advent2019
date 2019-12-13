@@ -2,12 +2,104 @@
 
 // SOLUTION CODE GOES HERE
 
-// Remove if this is not an intcode problem
-mod intcode;
-use intcode::*;
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+enum Color {
+    Black,
+    White,
+    Transparent,
+}
+
+#[derive(Debug, Clone)]
+struct Image<T> {
+    grids: Vec<T>,
+}
+
+impl<T: Grid<Item = Color>> FromIterator<T> for Image<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        Image {
+            grids: iter
+                .into_iter()
+                .inspect(|grid| {
+                    assert!(grid.dimensions() == (Rows(6), Columns(25)));
+                    assert!(grid.root() == (Row(0), Column(0)));
+                })
+                .collect(),
+        }
+    }
+}
+
+impl<T> GridBounds for Image<T> {
+    fn root(&self) -> Location {
+        Location::zero()
+    }
+
+    fn dimensions(&self) -> Vector {
+        Vector::new(Rows(6), Columns(25))
+    }
+}
+
+impl<T: Grid<Item = Color>> Grid for Image<T> {
+    type Item = Color;
+
+    unsafe fn get_unchecked(&self, location: &Location) -> &Color {
+        self.grids
+            .iter()
+            .map(|grid| grid.get_unchecked(location))
+            .filter(|&&color| color != Color::Transparent)
+            .next()
+            .unwrap_or(&Color::Transparent)
+    }
+}
 
 #[inline(always)]
-fn solve(input: &str) -> impl Display {}
+fn solve(input: &str) -> impl Display {
+    let row_range = RowRange::span(Row(0), Rows(6));
+    let column_range = ColumnRange::span(Column(0), Columns(25));
+
+    let locations = row_range.flat_map(move |row| column_range.clone().map(move |col| row + col));
+
+    let result: Image<VecGrid<Color>> = input
+        .trim()
+        .as_bytes()
+        .chunks(6 * 25)
+        .map(|input_part| {
+            // Parse the input
+            let values = input_part.iter().map(|&byte| {
+                // Remember that this is an ascii byte
+                match byte {
+                    48 => Color::Black,
+                    49 => Color::White,
+                    50 => Color::Transparent,
+                    _ => panic!("Invalid byte in input: {}", byte),
+                }
+            });
+
+            let mut grid = VecGrid::new_fill((Rows(6), Columns(25)), &Color::Transparent).unwrap();
+
+            // Fill the grid
+            locations.clone().zip(values).for_each(|(location, value)| {
+                grid[location] = value;
+            });
+
+            grid
+        })
+        .collect::<Image<_>>()
+        .rows()
+        .iter()
+        .map(|row| {
+            row.iter()
+                .map(|&cell| match cell {
+                    Color::Black => ' ',
+                    Color::White => '#',
+                    Color::Transparent => ' ',
+                })
+                .join_concat()
+        })
+        .join_with('\n')
+        .to_string();
+
+    result
+}
 
 /*
  * SUPPORTING LIBRARY CODE GOES HERE:
