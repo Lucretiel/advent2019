@@ -48,9 +48,10 @@ pub trait Value: Sized {
 
     #[inline(always)]
     fn with_relative_base(self) -> RBOffset<Self>
-        where Self: Value<Output=isize>,
+    where
+        Self: Value<Output = isize>,
     {
-        RBOffset {offset: self}
+        RBOffset { offset: self }
     }
 }
 
@@ -126,11 +127,11 @@ impl Addressed for IP {
 }
 
 #[derive(Debug, Clone)]
-pub struct RBOffset<T: Value<Output=isize>> {
-    offset: T
+pub struct RBOffset<T: Value<Output = isize>> {
+    offset: T,
 }
 
-impl<T: Value<Output=isize>> Addressed for RBOffset<T> {
+impl<T: Value<Output = isize>> Addressed for RBOffset<T> {
     #[inline(always)]
     fn address(&self, machine: &Machine) -> usize {
         (machine.relative_base + self.offset.get(machine))

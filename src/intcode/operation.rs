@@ -44,7 +44,7 @@ macro_rules! try_op {
             Some(state) => return Some(state),
             None => {}
         }
-    }
+    };
 }
 
 // Create an operation that runs A, then B if A doesn't halt.
@@ -52,10 +52,9 @@ pub fn chain<T: AsMachineState, U: AsMachineState>(
     mut first: impl FnMut(&mut Machine) -> T,
     mut second: impl FnMut(&mut Machine) -> U,
 ) -> impl FnMut(&mut Machine) -> Option<MachineState> {
-    move |machine|
-        match first(machine).as_machine_state() {
-            Some(state) => Some(state),
-            None => second(machine).as_machine_state()
+    move |machine| match first(machine).as_machine_state() {
+        Some(state) => Some(state),
+        None => second(machine).as_machine_state(),
     }
 }
 
@@ -74,7 +73,7 @@ macro_rules! proc {
     };
 }
 
-pub fn fetch_then<T: Value<Output=isize>>(
+pub fn fetch_then<T: Value<Output = isize>>(
     value: T,
     mut op: impl FnMut(&mut Machine),
 ) -> impl FnMut(&mut Machine) -> MachineState {
@@ -88,7 +87,7 @@ pub fn fetch_then<T: Value<Output=isize>>(
 /// Common implementation for set and set_external
 fn set_impl(
     mut get_value: impl FnMut(&Machine) -> isize,
-    destination: impl Addressed
+    destination: impl Addressed,
 ) -> impl FnMut(&mut Machine) {
     move |machine| {
         let value = get_value(machine);
@@ -122,8 +121,7 @@ pub fn set(
 
 pub fn set_ip(target: impl Addressed) -> impl Fn(&mut Machine) {
     move |machine| {
-        let address = target.address(machine);
-        machine.instruction_pointer = address;
+        machine.instruction_pointer = target.address(machine);
     }
 }
 
@@ -131,7 +129,7 @@ pub fn advance_ip(offset: usize) -> impl Fn(&mut Machine) {
     set_ip(IP.offset(offset))
 }
 
-pub fn move_rb(offset: impl Value<Output=isize>) -> impl Fn(&mut Machine) {
+pub fn move_rb(offset: impl Value<Output = isize>) -> impl Fn(&mut Machine) {
     move |machine| {
         machine.relative_base += offset.get(machine);
     }
