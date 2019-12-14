@@ -1,5 +1,7 @@
+#!/bin/sh
+
 set -ex
 
-rm src/main.rs
-cp src/template.rs src/"$1".rs
-ln -s src/"$1".rs src/main.rs
+rm -f src/main.rs
+cp -nv src/template.rs src/"$1".rs
+ln -s "$1".rs src/main.rs
