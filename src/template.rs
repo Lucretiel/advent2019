@@ -22,7 +22,7 @@ fn solve(input: &str) -> impl Display {}
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 use std::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::error::Error;
 use std::fmt::{self, Display, Formatter, Write as FmtWrite};
 use std::hash::Hash;
@@ -53,6 +53,9 @@ use lazy_format::lazy_format;
 
 // Cascading init
 use cascade::cascade;
+
+// Integer traits
+use num::Integer;
 
 #[inline(always)]
 fn timed<T>(f: impl FnOnce() -> T) -> (T, Duration) {
