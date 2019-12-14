@@ -35,9 +35,6 @@ use std::str::FromStr;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
-use lazy_static::lazy_static;
-use regex::{self, Regex};
-
 // String joins
 use joinery::prelude::*;
 
@@ -57,6 +54,16 @@ use cascade::cascade;
 // Integer traits
 use num::Integer;
 
+// Parsing
+use nom::{
+    bytes::complete::tag,
+    character::complete::{alpha1, digit1, multispace0, multispace1, space0, space1},
+    combinator::{iterator, map, map_res},
+    multi::separated_list,
+    sequence::{delimited, pair, separated_pair, terminated},
+    IResult,
+};
+
 #[inline(always)]
 fn timed<T>(f: impl FnOnce() -> T) -> (T, Duration) {
     let start = Instant::now();
@@ -73,35 +80,4 @@ fn main() {
     let (solution, duration) = timed(move || solve(&input));
     println!("{}", solution);
     eprintln!("Algorithm duration: {:?}", duration);
-}
-
-/// This trait provides methods for extrating fields from a parsed regex. They
-/// assume that a match's groups are present, and panic if not.
-trait RegexExtractor<'t> {
-    fn field(&self, index: usize) -> &'t str;
-
-    fn parse<T: FromStr>(&self, index: usize) -> T
-    where
-        T::Err: Display;
-}
-
-impl<'t> RegexExtractor<'t> for regex::Captures<'t> {
-    #[inline]
-    fn field(&self, index: usize) -> &'t str {
-        self.get(index)
-            .unwrap_or_else(move || panic!("Group {} didn't match anything", index))
-            .as_str()
-    }
-
-    #[inline]
-    fn parse<T: FromStr>(&self, index: usize) -> T
-    where
-        T::Err: Display,
-    {
-        let field = self.field(index);
-
-        field.parse().unwrap_or_else(move |err| {
-            panic!("Failed to parse group {} \"{}\": {}", index, field, err)
-        })
-    }
 }
