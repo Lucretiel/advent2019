@@ -36,17 +36,6 @@ impl AsMachineState for () {
     }
 }
 
-// Run an operation on a machine. Return if it returns a halt state.
-#[macro_export]
-macro_rules! try_op {
-    ($machine:ident . $operation:expr) => {
-        match $crate::intcode::operation::MachineState::as_machine_state(&$operation($machine)) {
-            Some(state) => return Some(state),
-            None => {}
-        }
-    };
-}
-
 // Create an operation that runs A, then B if A doesn't halt.
 pub fn chain<T: AsMachineState, U: AsMachineState>(
     mut first: impl FnMut(&mut Machine) -> T,
@@ -58,8 +47,8 @@ pub fn chain<T: AsMachineState, U: AsMachineState>(
     }
 }
 
-/// Create an operation that runs a series of Operations in order. Returns
-/// the result of the last operation.
+/// Create an operation that runs a series of Operations in order. Stops
+/// if one of the operations returns Some(MachineState).
 #[macro_export]
 macro_rules! proc {
     ($first:expr) => {
@@ -73,6 +62,8 @@ macro_rules! proc {
     };
 }
 
+/// Create an operation that fetches a value, then runs an operation, then
+/// blocks by Outputting the fetched value
 pub fn fetch_then<T: Value<Output = isize>>(
     value: T,
     mut op: impl FnMut(&mut Machine),
@@ -103,7 +94,8 @@ fn set_impl(
 }
 
 /// Create an operation that sets a memory location using an external function.
-/// The function is called each time the operation is executed.
+/// The function is called each time the operation is executed. Primarily
+/// intended to support the intcode input operation.
 pub fn set_external(
     mut operation: impl FnMut() -> isize,
     destination: impl Addressed,
@@ -111,7 +103,9 @@ pub fn set_external(
     set_impl(move |_machine| operation(), destination)
 }
 
-/// Create an operation that sets a value using a value
+/// Create an operation that sets a value using a value. This, along with
+/// set_ip, was the orignal intcode operation, and it serves as a template
+/// for the entire operational model.
 pub fn set(
     value: impl Value<Output = isize>,
     destination: impl Addressed,
@@ -119,16 +113,21 @@ pub fn set(
     set_impl(move |machine| value.get(machine), destination)
 }
 
+/// Create an operation that sets the instruction pointer to point to a given
+/// addressed value.
 pub fn set_ip(target: impl Addressed) -> impl Fn(&mut Machine) {
     move |machine| {
         machine.instruction_pointer = target.address(machine);
     }
 }
 
+/// Create an operation that increases the instruction pointer by the given
+/// amount
 pub fn advance_ip(offset: usize) -> impl Fn(&mut Machine) {
     set_ip(IP.offset(offset))
 }
 
+/// Create an operation that offsets the relative base by a given value
 pub fn move_rb(offset: impl Value<Output = isize>) -> impl Fn(&mut Machine) {
     move |machine| {
         machine.relative_base += offset.get(machine);
