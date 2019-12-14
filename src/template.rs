@@ -58,9 +58,9 @@ use num::Integer;
 use nom::{
     bytes::complete::tag,
     character::complete::{alpha1, digit1, multispace0, multispace1, space0, space1},
-    combinator::{iterator, map, map_res},
-    multi::separated_list,
-    sequence::{delimited, pair, separated_pair, terminated},
+    combinator::{all_consuming, iterator, map, map_res, opt, recognize},
+    multi::{many0, separated_list},
+    sequence::{delimited, pair, preceded, separated_pair, terminated, tuple},
     IResult,
 };
 
