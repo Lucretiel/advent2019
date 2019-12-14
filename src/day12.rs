@@ -110,19 +110,26 @@ fn parse_moon(input: &str) -> IResult<&str, Moon> {
                 velocity: Vec3::default(),
             },
         ),
-        tag(">"),
+        pair(tag(">"), multispace0),
     )(input)
 }
 
 #[inline(always)]
 fn solve(input: &str) -> impl Display {
-    let mut moons = all_consuming(many0(terminated(parse_moon, multispace0)))(input)
-        .unwrap()
-        .1;
+    let mut moons = [Moon::default(); 4];
+
+    let (input, moon) = parse_moon(input).unwrap();
+    moons[0] = moon;
+    let (input, moon) = parse_moon(input).unwrap();
+    moons[1] = moon;
+    let (input, moon) = parse_moon(input).unwrap();
+    moons[2] = moon;
+    let (_, moon) = parse_moon(input).unwrap();
+    moons[3] = moon;
 
     for _ in 0..1000 {
-        for m1 in 0..moons.len() {
-            for m2 in (0..moons.len()).filter(|&m2| m2 != m1) {
+        for m1 in 0..4 {
+            for m2 in (0..4).filter(|&m2| m2 != m1) {
                 let target_position = moons[m2].position;
                 moons[m1].update_velocity(&target_position);
             }
