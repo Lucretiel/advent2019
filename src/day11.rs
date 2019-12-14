@@ -29,25 +29,6 @@ impl Color {
     }
 }
 
-impl Display for Color {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            Color::Black => ' '.fmt(f),
-            Color::White => '█'.fmt(f),
-        }
-    }
-}
-
-fn print<T: Display>(mut dest: impl io::Write, grid: &impl Grid<Item = T>) -> io::Result<()> {
-    for row in grid.rows().iter() {
-        for cell in row.iter() {
-            write!(dest, "{}", cell)?;
-        }
-        write!(dest, "\n")?;
-    }
-    writeln!(dest, "------------------------------------------------")
-}
-
 #[inline(always)]
 fn solve(input: &str) -> impl Display {
     let mut machine = Machine::from_csv(input);
@@ -88,7 +69,13 @@ fn solve(input: &str) -> impl Display {
         robot_location = robot_location.step(robot_direction);
     }
 
-    print(io::stderr().lock(), &panel).unwrap();
+    eprint!(
+        "{}",
+        panel.display_with(|color| match color {
+            Color::Black => ' ',
+            Color::White => '█',
+        })
+    );
 
     " "
 }
