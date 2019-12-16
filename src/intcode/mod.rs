@@ -32,67 +32,60 @@ fn conditional_jmp(condition: impl Fn(isize) -> bool) -> impl FnMut(&mut Machine
 }
 
 /// Create an operation that runs a single instruction of the machine.
-pub fn step(input: impl IntoIterator<Item = isize>) -> impl FnMut(&mut Machine) -> Option<MachineState> {
+pub fn step(
+    input: impl IntoIterator<Item = isize>,
+) -> impl FnMut(&mut Machine) -> Option<MachineState> {
     // TODO: constify all this
     let mut input = input.into_iter();
 
     // Basic compute + write operations
-    let mut op_add = binary_operation(|a, b| a + b);
-    let mut op_mul = binary_operation(|a, b| a * b);
-    let mut op_lt = binary_operation(|a, b| if a < b { 1 } else { 0 });
-    let mut op_eq = binary_operation(|a, b| if a == b { 1 } else { 0 });
+    let op_add = binary_operation(|a, b| a + b);
+    let op_mul = binary_operation(|a, b| a * b);
+    let op_lt = binary_operation(|a, b| if a < b { 1 } else { 0 });
+    let op_eq = binary_operation(|a, b| if a == b { 1 } else { 0 });
 
     // Conditional writes
-    let mut op_jmp_true = conditional_jmp(|c| c != 0);
-    let mut op_jmp_false = conditional_jmp(|c| c == 0);
+    let op_jmp_true = conditional_jmp(|c| c != 0);
+    let op_jmp_false = conditional_jmp(|c| c == 0);
 
     // Read input
-    let mut op_input = move |m: &mut Machine| match input.next() {
+    let op_input = move |m: &mut Machine| match input.next() {
         None => Some(MachineState::NeedInput),
-        Some(value) => chain(
-            set(value, param(1)),
-            advance_ip(2),
-        )(m)
+        Some(value) => chain(set(value, param(1)), advance_ip(2))(m),
     };
 
     // Write a value to output. The operation itself doesn't really do
     // anything; we rely on the loop break to push the value to output.
-    let mut op_output = fetch_then(param(1), advance_ip(2));
+    let op_output = fetch_then(param(1), advance_ip(2));
 
     // Update the relative base
-    let mut op_rb_offset = chain(
-        move_rb(param(1)),
-        advance_ip(2),
-    );
+    let op_rb_offset = chain(move_rb(param(1)), advance_ip(2));
 
-    // Get the current opcode; drop the mode bits
-    let inst_opcode = IP.map(opcode);
-
-    move |machine|
-        match inst_opcode.get(machine) {
-            1 => op_add(machine),
-            2 => op_mul(machine),
-            3 => op_input(machine),
-            4 => Some(op_output(machine)),
-            5 => op_jmp_true(machine).as_machine_state(),
-            6 => op_jmp_false(machine).as_machine_state(),
-            7 => op_lt(machine),
-            8 => op_eq(machine),
-            9 => op_rb_offset(machine),
-            99 => Some(MachineState::Halt),
-            _ => panic!(
-                "Invalid opcode {} at address {}",
-                IP.get(machine),
-                IP.address(machine),
-            ),
-        }
+    // This is a series of chained ifs, not a switch; hopefully the compiler
+    // can optimize it.
+    proc!(
+        match_opcode(1, op_add);
+        match_opcode(2, op_mul);
+        match_opcode(3, op_input);
+        match_opcode(4, op_output);
+        match_opcode(5, op_jmp_true);
+        match_opcode(6, op_jmp_false);
+        match_opcode(7, op_lt);
+        match_opcode(8, op_eq);
+        match_opcode(9, op_rb_offset);
+        match_opcode(99, |machine| panic!(
+            "Invalid opcode {} at address {}",
+            IP.get(machine),
+            IP.address(machine),
+        ))
+    )
 }
 
 // Create an operation that runs a machine with the input until it blocks
 // on input, outputs a value, or halts
 pub fn run_until_block(
-    input: impl IntoIterator<Item=isize>
-) -> impl FnMut(&mut Machine) -> MachineState  {
+    input: impl IntoIterator<Item = isize>,
+) -> impl FnMut(&mut Machine) -> MachineState {
     let mut stepper = step(input);
 
     move |machine| loop {

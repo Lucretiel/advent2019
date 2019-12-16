@@ -1,7 +1,7 @@
 use std::convert::{TryFrom, TryInto};
 use std::fmt::{self, Debug, Formatter};
 
-use super::{AddUsize, Addressed, Machine, Value, IP};
+use super::{opcode, AddUsize, Addressed, Machine, Value, IP};
 
 #[must_use]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -57,7 +57,7 @@ macro_rules! proc {
     ($first:expr $(; $rest:expr)*) => {
         $crate::intcode::operation::chain(
             $first,
-            $crate::intcode::operation::proc!($second $(; $rest)*)
+            $crate::proc!($($rest);*)
         )
     };
 }
@@ -131,5 +131,22 @@ pub fn advance_ip(offset: usize) -> impl Fn(&mut Machine) {
 pub fn move_rb(offset: impl Value<Output = isize>) -> impl Fn(&mut Machine) {
     move |machine| {
         machine.relative_base += offset.get(machine);
+    }
+}
+
+/// Create an operation that runs the inner operation only if the opcode
+/// code is a certain value
+pub fn match_opcode<T: AsMachineState>(
+    code: isize,
+    mut op: impl FnMut(&mut Machine) -> T,
+) -> impl FnMut(&mut Machine) -> Option<MachineState> {
+    let opcode = IP.map(opcode);
+
+    move |machine| {
+        if opcode.get(machine) == code {
+            op(machine).as_machine_state()
+        } else {
+            None
+        }
     }
 }
