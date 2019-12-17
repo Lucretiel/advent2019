@@ -7,11 +7,11 @@ pub mod operation;
 pub mod value;
 
 use std::fmt::Debug;
+use std::iter;
 
 use crate::proc;
 pub use machine::{initialize_to, Machine};
 pub use operation::*;
-use std::iter;
 pub use value::*;
 
 fn binary_operation(
