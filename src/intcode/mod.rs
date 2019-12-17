@@ -73,11 +73,14 @@ pub fn step(
         match_opcode(7, op_lt);
         match_opcode(8, op_eq);
         match_opcode(9, op_rb_offset);
-        match_opcode(99, |machine| panic!(
-            "Invalid opcode {} at address {}",
-            IP.get(machine),
-            IP.address(machine),
-        ))
+        match_opcode(99, |_m| MachineState::Halt);
+        |machine| match IP.map(opcode).get(machine) {
+            1..=9 | 99 => {},
+            _ => panic!("Invalid opcode at address {}: {}",
+                IP.address(machine),
+                IP.get(machine),
+            )
+        }
     )
 }
 
