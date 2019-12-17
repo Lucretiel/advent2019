@@ -5,6 +5,7 @@ authors = ["Nathan West <Lucretiel@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+num = "0.2.0"
 joinery = "2.0.0"
 generations = "2.0.0"
 gridly = "0.7.1"
@@ -14,7 +15,6 @@ lazy_format = "1.7.4"
 nom = "5.0.1"
 permutohedron = "0.2.4"
 cascade = "0.1.4"
-num = "0.2.0"
 
 [profile.dev]
 panic = "abort"
