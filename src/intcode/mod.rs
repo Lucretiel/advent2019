@@ -8,6 +8,9 @@ pub mod value;
 
 use std::fmt::Debug;
 use std::iter;
+use std::thread;
+
+use crossbeam::channel;
 
 use crate::proc;
 pub use machine::{initialize_to, Machine};
@@ -121,4 +124,40 @@ pub fn machine_iter<'a>(
         MachineState::Halt => None,
         MachineState::NeedInput => panic!("Unexpected end of input"),
     })
+}
+
+/// Run a machine in a background thread. The machine will read inputs and
+/// send outputs to the channels, blocking if necessary. It will gracefully
+/// stop if either channel is closed. It will close the output channel if
+/// it halts.
+pub fn threaded_machine(
+    mut machine: Machine,
+    input: channel::Receiver<isize>,
+    output: channel::Sender<isize>,
+) {
+    thread::spawn(move || {
+        let mut stepper = run_until_block(input);
+
+        loop {
+            match stepper(&mut machine) {
+                MachineState::NeedInput => break,
+                MachineState::Halt => break,
+                MachineState::Output(out) => match output.send(out) {
+                    Err(..) => break,
+                    Ok(()) => {}
+                },
+            }
+        }
+    });
+}
+
+pub fn make_threaded_machine(
+    machine: Machine,
+) -> (channel::Sender<isize>, channel::Receiver<isize>) {
+    let (send_input, recv_input) = channel::unbounded();
+    let (send_output, recv_output) = channel::unbounded();
+
+    threaded_machine(machine, recv_input, send_output);
+
+    (send_input, recv_output)
 }
