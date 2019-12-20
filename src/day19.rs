@@ -1,0 +1,126 @@
+#![allow(unused_imports)]
+
+// SOLUTION CODE GOES HERE
+
+// Remove if this is not an intcode problem
+mod intcode;
+use intcode::*;
+
+#[inline(always)]
+fn solve(input: &str) -> impl Display {
+    let init = Machine::from_csv(input);
+    let mut machine = Machine::default();
+
+    // Check if a location is covered by the tractor beam.
+    let mut check_location = move |location: Location| {
+        machine.clone_from(&init);
+
+        match run_until_block([location.column.0, location.row.0].iter().copied())(&mut machine) {
+            MachineState::Output(0) => false,
+            MachineState::Output(1) => true,
+            state => panic!("Unexpected state {:?} at {:?}", state, location),
+        }
+    };
+
+    // We know the solution is > 100, so just start there.
+    let mut lower_left = Row(100) + Column(0);
+
+    let to_upper_right = (Up * 99) + (Right * 99);
+    let to_upper_left = Vector::upward(99);
+
+    loop {
+        // Check the next row
+        lower_left += Down;
+
+        // Find the corner
+        while !check_location(lower_left) {
+            lower_left += Right;
+        }
+
+        // See if the top right is available
+        if check_location(lower_left + to_upper_right) {
+            let upper_left = lower_left + to_upper_left;
+
+            // If se, we win!
+            break lazy_format!(
+                "location: {:?}\nsolution: {}",
+                upper_left,
+                upper_left.column.0 * 10000 + upper_left.row.0,
+            );
+        }
+    }
+}
+
+/*
+ * SUPPORTING LIBRARY CODE GOES HERE:
+ *
+ * - Imports & use statements for tons of common traits, data structures, etc
+ * - `fn main` bootstrap that reads from stdin and writes the solution to stdout
+ * - Utility traits
+ * - Anything else that might be broadly useful for other problems
+ */
+
+#[global_allocator]
+static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+
+use std::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::error::Error;
+use std::fmt::{self, Display, Formatter, Write as FmtWrite};
+use std::hash::Hash;
+use std::io::{self, Read, Write as IoWrite};
+use std::iter::{self, FromIterator, FusedIterator, Peekable};
+use std::mem::{replace, swap};
+use std::ops::Add;
+use std::rc::{Rc, Weak};
+use std::str::FromStr;
+use std::thread::sleep;
+use std::time;
+use std::time::{Duration, Instant};
+
+// String joins
+use joinery::prelude::*;
+
+// Grids
+use gridly::prelude::*;
+use gridly_grids::*;
+
+// Generation-based simulations
+use generations::*;
+
+// Formatting things without creating intermediary strings
+use lazy_format::lazy_format;
+
+// Cascading init
+use cascade::cascade;
+
+// Integer traits
+use num::Integer;
+
+// Parsing
+use nom::{
+    bytes::complete::tag,
+    character::complete::{alpha1, digit1, multispace0, multispace1, space0, space1},
+    combinator::{all_consuming, iterator, map, map_res, opt, recognize},
+    multi::{many0, separated_list},
+    sequence::{delimited, pair, preceded, separated_pair, terminated, tuple},
+    IResult,
+};
+
+#[inline(always)]
+fn timed<T>(f: impl FnOnce() -> T) -> (T, Duration) {
+    let start = Instant::now();
+    let result = f();
+    let end = Instant::now();
+    (result, end - start)
+}
+
+fn main() {
+    let mut input = String::with_capacity(4096);
+    io::stdin()
+        .read_to_string(&mut input)
+        .unwrap_or_else(|err| panic!("Error reading input from stdin: {}", err));
+    let (solution, duration) = timed(move || solve(&input));
+    println!("{}", solution);
+    eprintln!("Algorithm duration: {:?}", duration);
+}
