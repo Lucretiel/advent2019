@@ -11,6 +11,16 @@ pub enum MachineState {
     Halt,
 }
 
+impl MachineState {
+    pub fn expect_out(self, ctx: &'static str) -> isize {
+        match self {
+            MachineState::Output(value) => value,
+            MachineState::Halt => panic!("Unexpected halt: {}", ctx),
+            MachineState::NeedInput => panic!("Unexpected block on input: {}", ctx),
+        }
+    }
+}
+
 pub trait AsMachineState {
     fn as_machine_state(&self) -> Option<MachineState>;
 }
