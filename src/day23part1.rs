@@ -18,9 +18,6 @@ fn solve(input: &str) -> impl Display {
 
     let mut machines: Vec<Machine> = iter::repeat_with(|| init.clone()).take(50).collect();
 
-    let mut nat_packet = None;
-    let mut last_y = None;
-
     // We need to initialize the machines with their addresses
     let mut queue: VecDeque<Packet> = (0..50usize)
         .map(|addr| Packet {
@@ -51,33 +48,23 @@ fn solve(input: &str) -> impl Display {
                         let y = stepper(machine).expect_out("reading packet y");
 
                         if dest == 255 {
-                            nat_packet = Some((x, y));
-                        } else {
-                            queue.push_back(Packet { dest, value: x });
-                            queue.push_back(Packet { dest, value: y });
+                            return y;
                         }
+
+                        queue.reserve(2);
+                        queue.push_back(Packet { dest, value: x });
+                        queue.push_back(Packet { dest, value: y });
+                        // eprintln!("machine {} sends ({}, {}) to {}", packet.dest, x, y, dest);
                     }
                 }
             }
         }
 
-        // At this point, all machines are blocked on input. Insert the NAT
-        // packet, or send the no input signals to everyone
-        match nat_packet.take() {
-            Some((x, y)) => {
-                if Some(y) == last_y {
-                    return y;
-                } else {
-                    last_y = Some(y);
-                }
-
-                queue.push_back(Packet { dest: 0, value: x });
-                queue.push_back(Packet { dest: 0, value: y });
-            }
-            None => {
-                queue.extend((0..50usize).map(|dest| Packet { dest, value: -1 }));
-            }
-        }
+        // At this point, all machines are blocked on input
+        queue.extend((0..50usize).map(|addr| Packet {
+            dest: addr,
+            value: -1,
+        }));
     }
 }
 
