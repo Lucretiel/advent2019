@@ -7,7 +7,12 @@ mod intcode;
 use intcode::*;
 
 #[inline(always)]
-fn solve(input: &str) -> impl Display {}
+fn solve_intcode(machine: Machine) -> impl Display {}
+
+#[inline(always)]
+fn solve(input: &str) -> impl Display {
+    solve_intcode(Machine::from_csv(input))
+}
 
 /*
  * SUPPORTING LIBRARY CODE GOES HERE:
